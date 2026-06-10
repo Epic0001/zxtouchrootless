@@ -1,6 +1,7 @@
 #import <execinfo.h>
 #import <mach-o/dyld.h>
 #include <substrate.h>
+#include <string.h>
 
 
 

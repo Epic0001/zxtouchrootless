@@ -1,6 +1,9 @@
 #ifndef RECORD_H
 #define RECORD_H
 
+#import <Foundation/Foundation.h>
+#import <CoreFoundation/CoreFoundation.h>
+
 #include "headers/IOHIDEvent.h"
 #include "headers/IOHIDEventData.h"
 #include "headers/IOHIDEventTypes.h"

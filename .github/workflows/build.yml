@@ -2,35 +2,34 @@ name: Build Rootless Package
 
 on:
   push:
-    branches: [main, master]
+    branches: [ master, main ]
   pull_request:
-    branches: [main, master]
+    branches: [ master, main ]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: macos-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install Theos
-        run: |
-          brew install dpkg ldid
-          git clone --recursive https://github.com/theos/theos.git $HOME/theos
-          git clone https://github.com/theos/sdks.git $HOME/theos/sdks
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: 1
+      - name: Setup Theos
+        uses: beerpiss/theos-action@v1
+        with:
+          cache: true
 
-      - name: Build Package
+      - name: Build .deb
         run: make package THEOS_PACKAGE_SCHEME=rootless FINALPACKAGE=1
         env:
-          THEOS: /Users/runner/theos
+          THEOS: ${{ github.workspace }}/theos
 
-      - name: Upload deb
+      - name: Upload .deb
         uses: actions/upload-artifact@v4
         with:
-          name: rootless-deb
+          name: ZXTouch-rootless-deb
           path: packages/*.deb
+          if-no-files-found: error

@@ -1,11 +1,13 @@
 #ifndef SERVER_H
 #define SERVER_H
-#endif
 
+#import <Foundation/Foundation.h>
+#import <CoreFoundation/CoreFoundation.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#endif
 
 #define PORT 6000
 #define ADDR "0.0.0.0"

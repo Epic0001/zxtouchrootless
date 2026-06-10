@@ -1,6 +1,8 @@
 #ifndef TOUCH_H
 #define TOUCH_H
 
+#import <Foundation/Foundation.h>
+
 #include "headers/IOHIDEvent.h"
 #include "headers/IOHIDEventData.h"
 #include "headers/IOHIDEventTypes.h"

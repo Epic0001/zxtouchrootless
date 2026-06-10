@@ -1,10 +1,9 @@
 #ifndef SCRIPT_PLAYER_H
 #define SCRIPT_PLAYER_H
 
-#endif
+#import <Foundation/Foundation.h>
 
 @interface ScriptPlayer : NSObject
-
 
 - (void)setRepeatTime:(int)rt;
 - (void)setInterval:(float)intv;
@@ -20,3 +19,5 @@
 - (NSString*)getCurrentBundlePath;
 
 @end
+
+#endif

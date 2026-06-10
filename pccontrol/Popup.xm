@@ -44,77 +44,53 @@ static int windowHeight = 250;
                 _window = [[UIWindow alloc] initWithFrame:CGRectMake(windowLeftTopCornerX, windowLeftTopCornerY, windowWidth, windowHeight)];
             }
             _window.windowLevel = UIWindowLevelAlert + 1;
-            _window.rootViewController = [[UIViewController alloc] init];
-            [_window setBackgroundColor:[UIColor whiteColor]];
+            UIViewController *rootVC = [[UIViewController alloc] init];
+            rootVC.view.backgroundColor = [UIColor whiteColor];
+            rootVC.view.layer.borderColor = [UIColor lightGrayColor].CGColor;
+            rootVC.view.layer.borderWidth = 2.0f;
+            rootVC.view.layer.cornerRadius = 15.0f;
+            rootVC.view.clipsToBounds = YES;
+            _window.rootViewController = rootVC;
+            UIView *contentView = rootVC.view;
 
-            _window.layer.borderColor = [UIColor whiteColor].CGColor;
-            _window.layer.borderWidth = 2.0f;
-            _window.layer.cornerRadius = 15.0f;
             // Add header
             NSString *headerText = @"ZXTouch Panel";
-
-            UIFont * font = [UIFont systemFontOfSize:30];
-            CGSize headerSize = [headerText sizeWithFont:font];
-
-            UILabel *headerLabel = [[UILabel alloc]initWithFrame:CGRectMake(windowWidth/2 - headerSize.width/2, 0, headerSize.width, headerSize.height)];
+            UIFont *font = [UIFont boldSystemFontOfSize:16];
+            UILabel *headerLabel = [[UILabel alloc] initWithFrame:CGRectMake(10, 8, windowWidth - 40, 25)];
             headerLabel.font = font;
             headerLabel.text = headerText;
-            headerLabel.numberOfLines = 1;
-            headerLabel.baselineAdjustment = UIBaselineAdjustmentAlignBaselines; // or UIBaselineAdjustmentAlignCenters, or UIBaselineAdjustmentNone
-            headerLabel.adjustsFontSizeToFitWidth = YES;
-            headerLabel.adjustsLetterSpacingToFitWidth = YES;
-            headerLabel.minimumScaleFactor = 10.0f/12.0f;
-            headerLabel.clipsToBounds = YES;
-            headerLabel.backgroundColor = [UIColor clearColor];
             headerLabel.textColor = [UIColor blackColor];
-            headerLabel.textAlignment = NSTextAlignmentLeft;
-            [_window addSubview:headerLabel];
+            headerLabel.backgroundColor = [UIColor clearColor];
+            [contentView addSubview:headerLabel];
 
-            // Add hide button
-            UIButton *closeButton = [UIButton buttonWithType:UIButtonTypeCustom];
-            [closeButton addTarget:self 
-                    action:@selector(hide)
-            forControlEvents:UIControlEventTouchUpInside];
-            [closeButton setTitle:@"X" forState:UIControlStateNormal];
-                        closeButton.layer.borderColor = [UIColor blueColor].CGColor;
-            closeButton.layer.borderWidth = 2.0f;
-            closeButton.layer.cornerRadius = 10.0f;
+            // Close button
+            UIButton *closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+            [closeButton addTarget:self action:@selector(hide) forControlEvents:UIControlEventTouchUpInside];
+            [closeButton setTitle:@"✕" forState:UIControlStateNormal];
+            closeButton.frame = CGRectMake(windowWidth - 35, 5, 30, 30);
+            [contentView addSubview:closeButton];
 
-            [closeButton setTitleColor:[UIColor blueColor] forState:UIControlStateNormal];
- 
-            closeButton.backgroundColor = [UIColor clearColor];
-
-            closeButton.frame = CGRectMake(windowWidth-25, 5, 20, 20);
-            [_window addSubview:closeButton];
-
-            // row 2 buttons
-            // add record button
-            UIButton *recordButton = [UIButton buttonWithType:UIButtonTypeCustom];
-            [recordButton addTarget:self 
-                    action:@selector(recordingStart)
-            forControlEvents:UIControlEventTouchUpInside];
-
-            recordButton.backgroundColor = [UIColor clearColor];
-            [recordButton setImage:[UIImage imageWithContentsOfFile:ROOT_PATH_NS(@"/Library/Application Support/zxtouch/start-recording.png")] forState:UIControlStateNormal];
-            [recordButton setTitle:@"REC" forState:UIControlStateNormal];
+            // REC button
+            UIButton *recordButton = [UIButton buttonWithType:UIButtonTypeSystem];
+            [recordButton addTarget:self action:@selector(recordingStart) forControlEvents:UIControlEventTouchUpInside];
+            [recordButton setTitle:@"⏺ REC" forState:UIControlStateNormal];
             [recordButton setTitleColor:[UIColor redColor] forState:UIControlStateNormal];
+            recordButton.frame = CGRectMake(10, 45, 90, 40);
+            recordButton.layer.borderColor = [UIColor redColor].CGColor;
+            recordButton.layer.borderWidth = 1.0f;
+            recordButton.layer.cornerRadius = 8.0f;
+            [contentView addSubview:recordButton];
 
-            recordButton.frame = CGRectMake(30, headerSize.height + 10, 50, 50);
-            [_window addSubview:recordButton];
-
-            // add stop script button
-            UIButton *stopButton = [UIButton buttonWithType:UIButtonTypeCustom];
-            [stopButton addTarget:self 
-                    action:@selector(stopPlaying)
-            forControlEvents:UIControlEventTouchUpInside];
-
-            stopButton.backgroundColor = [UIColor clearColor];
-            [stopButton setImage:[UIImage imageWithContentsOfFile:ROOT_PATH_NS(@"/Library/Application Support/zxtouch/stop-playing.png")] forState:UIControlStateNormal];
-            [stopButton setTitle:@"STOP" forState:UIControlStateNormal];
+            // STOP button
+            UIButton *stopButton = [UIButton buttonWithType:UIButtonTypeSystem];
+            [stopButton addTarget:self action:@selector(stopPlaying) forControlEvents:UIControlEventTouchUpInside];
+            [stopButton setTitle:@"⏹ STOP" forState:UIControlStateNormal];
             [stopButton setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
-
-            stopButton.frame = CGRectMake(100, headerSize.height + 10, 50, 50);
-            [_window addSubview:stopButton];
+            stopButton.frame = CGRectMake(110, 45, 90, 40);
+            stopButton.layer.borderColor = [UIColor darkGrayColor].CGColor;
+            stopButton.layer.borderWidth = 1.0f;
+            stopButton.layer.cornerRadius = 8.0f;
+            [contentView addSubview:stopButton];
         });
         isShown = NO;        
     }
@@ -151,7 +127,7 @@ static int windowHeight = 250;
 
 - (void) show {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [_window makeKeyAndVisible];
+        _window.hidden = NO;
     });
     isShown = YES;
 }

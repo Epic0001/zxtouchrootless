@@ -14,3 +14,5 @@ void showToastFromRawData(UInt8 *eventData, NSError **error);
 - (void) setDuration:(int)d;
 
 @end
+
+#endif

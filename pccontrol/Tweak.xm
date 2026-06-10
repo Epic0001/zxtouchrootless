@@ -38,16 +38,7 @@
 #include "ColorPicker.h"
 #include "Play.h"
 #include "TouchIndicator/TouchIndicatorWindow.h"
-#include "Activator/ActivatorListener.h"
-
-
-#define DEBUG_MODE
-
-#ifdef DEBUG_MODE
-#define CHECKER true
-#else
-#define CHECKER !isExpired
-#endif
+#include "RootlessPath.h"
 
 #define IPHONE7P_HEIGHT 1920
 #define IPHONE7P_WIDTH 1080
@@ -58,7 +49,6 @@
 #define SET_SIZE 9
 
 
-static ActivatorListener *activatorInstance;
 
 
 int daemonSock = -1;
@@ -206,26 +196,6 @@ void startPopupListeningCallBack()
     //NSLog(@"### com.zjx.springboard: screen width: %f, screen height: %f", device_screen_width, device_screen_height);
 }
 
-Boolean initActivatorInstance()
-{
-    dlopen("/usr/lib/libactivator.dylib", RTLD_LAZY);
-    Class la = objc_getClass("LAActivator");
-    if (la) { //libactivator is installed
-        activatorInstance = [[ActivatorListener alloc] init];
-        
-        LAActivator* activator = [la sharedInstance];
-        if (activator.isRunningInsideSpringBoard)
-        {
-            //[activator unregisterListenerWithName:@"com.zjx.zxtouch"];
-            [activator registerListener:activatorInstance 
-                                            forName:@"com.zjx.zxtouch"];
-        }
-
-    }
-
-
-    return true;
-}
 
 Boolean initConfig()
 {
@@ -268,7 +238,6 @@ Boolean initConfig()
 Boolean init()
 {
     initScriptPlayer();
-    initActivatorInstance();
     initConfig();
 
     return true;
@@ -285,42 +254,6 @@ Boolean init()
 {
     %orig;
 
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        Boolean isExpired = false;
-
-        int requestCount = 0;
-        NSString *stringURL = @"http://47.114.83.227/internal/version_control/dylib/pccontrol/0.0.7-dnqNZp1d/valid";
-        NSURL  *url = [NSURL URLWithString:stringURL];
-
-        NSURLRequest *request = [NSURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData timeoutInterval:7.0];
-
-        // Send the request and wait for a response
-        NSHTTPURLResponse   *response;
-        NSError             *error = nil;
-        NSData *data = [NSURLConnection sendSynchronousRequest:request 
-                                            returningResponse:&response 
-                                                        error:&error];
-
-        // check for an error
-        if (error != nil) {
-            NSLog(@"com.zjx.springboard: Error check tweak expiring status. Error info: %@", error);
-        }
-        else if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
-            NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
-            if (httpResponse.statusCode == 404) {
-                NSLog(@"com.zjx.springboard: status code: %d", httpResponse.statusCode);
-                isExpired = true;
-            }     
-        }
-
-        if (isExpired) //
-        {
-            NSLog(@"### com.zjx.springboard: expired");
-            showAlertBox(@"Version Outdated", @"ZJXTouchSimulation: This version of ZJXSimulateTouch library is too old and I highly recommend you to update it on Cydia.", 999);
-        }
-
-
-    });
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         CGFloat screen_scale = [[UIScreen mainScreen] scale];
 
@@ -360,8 +293,7 @@ Boolean init()
         //[_webServer startWithPort:8080 bonjourName:nil];
         //NSLog(@"com.zjx.springboard: Visit %@ in your web browser", _webServer.serverURL);
 
-        //system("sudo zxtouchb -e \"chown -R mobile:mobile /var/mobile/Documents/com.zjx.zxtouchsp\"");
-        system("sudo zxtouchb -e \"chown -R mobile:mobile /var/mobile/Library/ZXTouch\"");
+        system("chown -R mobile:mobile /var/mobile/Library/ZXTouch");
 
         socketServer();
     });

@@ -1,5 +1,24 @@
 #!/bin/sh
-su mobile -c uicache
-echo "mobile ALL=(root) NOPASSWD:/usr/bin/zxtouchb" >> /etc/sudoers
-chown -R mobile:mobile /var/mobile/Library/ZXTouch
-chmod +x /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh
+
+# Register app with SpringBoard (rootless uicache)
+if [ -x /var/jb/usr/bin/uicache ]; then
+    /var/jb/usr/bin/uicache -a
+else
+    su mobile -c uicache 2>/dev/null || true
+fi
+
+# sudoers.d is writable on rootless; /etc/sudoers is not
+SUDOERS_D="/var/jb/etc/sudoers.d"
+if [ -d "$SUDOERS_D" ]; then
+    echo "mobile ALL=(root) NOPASSWD:/var/jb/usr/bin/zxtouchb" > "$SUDOERS_D/zxtouch"
+    chmod 440 "$SUDOERS_D/zxtouch"
+fi
+
+# Only touch user-data paths if they already exist
+if [ -d /var/mobile/Library/ZXTouch ]; then
+    chown -R mobile:mobile /var/mobile/Library/ZXTouch
+fi
+
+if [ -f /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh ]; then
+    chmod +x /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh
+fi

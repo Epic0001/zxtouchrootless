@@ -18,6 +18,13 @@ fi
 mkdir -p /var/mobile/Library/ZXTouch/scripts/
 mkdir -p /var/mobile/Library/ZXTouch/config/tweak/
 mkdir -p /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/
+
+# Copy example scripts (only if not already there)
+EXAMPLES=/var/jb/usr/share/zxtouch/examples
+if [ -d "$EXAMPLES" ]; then
+    cp -rn "$EXAMPLES/"* /var/mobile/Library/ZXTouch/scripts/ 2>/dev/null || true
+fi
+
 chown -R mobile:mobile /var/mobile/Library/ZXTouch
 
 # python3 lands at /var/jb/bin/python3 but ScriptPlayer looks at /var/jb/usr/bin/python3

@@ -1,4 +1,5 @@
 #include "UIKeyboard.h"
+#import <UIKit/UIKit.h>
 #import <Foundation/NSDistributedNotificationCenter.h>
 
 #define TASK_GET_TEXT_FROM_CLIPBOARD 6

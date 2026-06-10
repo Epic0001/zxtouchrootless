@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <string.h>
 
+extern "C" int system(const char *);
+
 #define SPRINGBOARD_PORT 6000
 #define equal(a, b) strcmp(a, b) == 0
 

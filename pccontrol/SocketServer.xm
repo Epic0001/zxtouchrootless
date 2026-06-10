@@ -39,14 +39,12 @@ void socketServer()
         CFDataRef address = CFDataCreate(kCFAllocatorDefault,  (UInt8 *)&Socketaddr, sizeof(Socketaddr));
         
         if (CFSocketSetAddress(_socket, address) != kCFSocketSuccess) {
-            
-            if (_socket) {
-                CFRelease(_socket);
-                //exit(1);
-            }
-            
-            _socket = NULL;
+            NSLog(@"### com.zjx.springboard: failed to bind socket on port %d", PORT);
+            [@"socket-bind-failed" writeToFile:@"/var/mobile/d_sockfail.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+            if (_socket) CFRelease(_socket);
+            return;
         }
+        [@"socket-bound-ok" writeToFile:@"/var/mobile/d_sockbound.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
         
         socketClients = [[NSMutableDictionary alloc] init];
 

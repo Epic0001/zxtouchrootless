@@ -240,7 +240,47 @@ Boolean init()
     return true;
 }
 
+static void zxtouch_springboard_ready(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
+{
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            [@"1-block-started" writeToFile:@"/var/mobile/d1.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+            CGFloat screen_scale = [[UIScreen mainScreen] scale];
+            CGFloat width = [UIScreen mainScreen].bounds.size.width * screen_scale;
+            CGFloat height = [UIScreen mainScreen].bounds.size.height * screen_scale;
+            [Screen setScreenSize:(width<height?width:height) height:(width>height?width:height)];
+            [@"3-screen-set" writeToFile:@"/var/mobile/d3.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+            popupWindow = [[PopupWindow alloc] init];
+            [@"4-popup-init" writeToFile:@"/var/mobile/d4.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+            initSenderId();
+            startPopupListeningCallBack();
+            initTouchGetScreenSize();
+            [@"5-sender-init" writeToFile:@"/var/mobile/d5.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+            if (!init()) { return; }
+            [@"6-init-done" writeToFile:@"/var/mobile/d6.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+            call_system("chown -R mobile:mobile /var/mobile/Library/ZXTouch");
+            [@"7-before-socketServer" writeToFile:@"/var/mobile/d7.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+            socketServer();
+        });
+    });
+}
+
 %ctor{
+    CFNotificationCenterAddObserver(
+        CFNotificationCenterGetDarwinNotifyCenter(),
+        NULL,
+        zxtouch_springboard_ready,
+        CFSTR("com.apple.springboard.hasBecomeActive"),
+        NULL,
+        CFNotificationSuspensionBehaviorDeliverImmediately
+    );
 }
 
 %hook SpringBoard
@@ -248,36 +288,6 @@ Boolean init()
 
 - (void)applicationDidFinishLaunching:(id)arg1
 {
-    // On iOS 16, %orig starts an internal run loop and never returns.
-    // Queue our init block BEFORE calling %orig so it runs in parallel.
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        [@"1-block-started" writeToFile:@"/var/mobile/d1.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-        [NSThread sleepForTimeInterval:1.5];
-        [@"2-after-sleep" writeToFile:@"/var/mobile/d2.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-
-        CGFloat screen_scale = [[UIScreen mainScreen] scale];
-        CGFloat width = [UIScreen mainScreen].bounds.size.width * screen_scale;
-        CGFloat height = [UIScreen mainScreen].bounds.size.height * screen_scale;
-        [Screen setScreenSize:(width<height?width:height) height:(width>height?width:height)];
-        [@"3-screen-set" writeToFile:@"/var/mobile/d3.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-
-        popupWindow = [[PopupWindow alloc] init];
-        [@"4-popup-init" writeToFile:@"/var/mobile/d4.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-
-        initSenderId();
-        startPopupListeningCallBack();
-        initTouchGetScreenSize();
-        [@"5-sender-init" writeToFile:@"/var/mobile/d5.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-
-        if (!init()) { return; }
-        [@"6-init-done" writeToFile:@"/var/mobile/d6.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-
-        call_system("chown -R mobile:mobile /var/mobile/Library/ZXTouch");
-        [@"7-before-socketServer" writeToFile:@"/var/mobile/d7.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-
-        socketServer();
-        [@"8-socketServer-returned" writeToFile:@"/var/mobile/d8.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    });
     %orig;
 }
 %end

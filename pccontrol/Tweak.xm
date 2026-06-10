@@ -273,6 +273,11 @@ static void zxtouch_springboard_ready(CFNotificationCenterRef center, void *obse
 }
 
 %ctor{
+    // Only run in SpringBoard
+    if (![NSProcessInfo.processInfo.processName isEqualToString:@"SpringBoard"]) return;
+
+    %init; // MUST call %init to register all Logos hooks when using a custom %ctor
+
     [@"ctor-ran" writeToFile:@"/var/mobile/d0_ctor.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
     // Use notify_register_dispatch — GCD-based, no CFRunLoop dependency

@@ -294,11 +294,5 @@ static void zxtouch_springboard_ready(CFNotificationCenterRef center, void *obse
         });
 }
 
-%hook SpringBoard
-#define CGRectSetPos( r, x, y ) CGRectMake( x, y, r.size.width, r.size.height )
-
-- (void)applicationDidFinishLaunching:(id)arg1
-{
-    %orig;
-}
-%end
+// SpringBoard hook removed - applicationDidFinishLaunching:%orig crashes SpringBoard on iOS 16
+// Init is handled via %ctor + dispatch_after + Darwin notification above

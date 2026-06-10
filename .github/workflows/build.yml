@@ -2,7 +2,7 @@ name: Build Rootless Package
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ master, main, ios16-rootless ]
   pull_request:
     branches: [ master, main ]
   workflow_dispatch:

@@ -275,22 +275,23 @@ static void zxtouch_springboard_ready(CFNotificationCenterRef center, void *obse
 %ctor{
     [@"ctor-ran" writeToFile:@"/var/mobile/d0_ctor.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-    // Register for multiple notifications in case one doesn't fire on iOS 16
-    for (NSString *notif in @[
-        @"com.apple.springboard.hasBecomeActive",
-        @"com.apple.springboard.finishedStartup",
-        @"SBSpringBoardReadyNotification",
-        @"com.apple.UIKit.activityContinuation.launched"
-    ]) {
-        CFNotificationCenterAddObserver(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            NULL,
-            zxtouch_springboard_ready,
-            (__bridge CFStringRef)notif,
-            NULL,
-            CFNotificationSuspensionBehaviorDeliverImmediately
-        );
-    }
+    // Use notify_register_dispatch — GCD-based, no CFRunLoop dependency
+    int token;
+    notify_register_dispatch("com.apple.springboard.hasBecomeActive", &token,
+        dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
+        ^(int t) {
+            notify_cancel(t);
+            [@"notif-fired" writeToFile:@"/var/mobile/d0_notif.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+            zxtouch_springboard_ready(NULL, NULL, NULL, NULL, NULL);
+        });
+
+    // Fallback: if notification never fires, init after 6 seconds
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 6 * NSEC_PER_SEC),
+        dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
+        ^{
+            [@"fallback-fired" writeToFile:@"/var/mobile/d0_fallback.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+            zxtouch_springboard_ready(NULL, NULL, NULL, NULL, NULL);
+        });
 }
 
 %hook SpringBoard

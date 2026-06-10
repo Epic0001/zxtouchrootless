@@ -251,49 +251,32 @@ Boolean init()
     // On iOS 16, %orig starts an internal run loop and never returns.
     // Queue our init block BEFORE calling %orig so it runs in parallel.
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        // Wait briefly for SpringBoard to finish basic setup before we init
+        [@"1-block-started" writeToFile:@"/var/mobile/d1.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
         [NSThread sleepForTimeInterval:1.5];
-        CGFloat screen_scale = [[UIScreen mainScreen] scale];
+        [@"2-after-sleep" writeToFile:@"/var/mobile/d2.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
+        CGFloat screen_scale = [[UIScreen mainScreen] scale];
         CGFloat width = [UIScreen mainScreen].bounds.size.width * screen_scale;
         CGFloat height = [UIScreen mainScreen].bounds.size.height * screen_scale;
+        [Screen setScreenSize:(width<height?width:height) height:(width>height?width:height)];
+        [@"3-screen-set" writeToFile:@"/var/mobile/d3.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-        [Screen setScreenSize:(width<height?width:height) height:(width>height?width:height)];    
-
-        //CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)stopCrazyTapCallback, CFSTR("com.zjx.crazytap.stop"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         popupWindow = [[PopupWindow alloc] init];
+        [@"4-popup-init" writeToFile:@"/var/mobile/d4.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
         initSenderId();
         startPopupListeningCallBack();
-
-        // init touch screensize. Temporarily put this line here. Will be removed.
         initTouchGetScreenSize();
+        [@"5-sender-init" writeToFile:@"/var/mobile/d5.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-        // init other things
-        if (!init())
-        {
-            return;
-        }
-
-     /*
-        
-        // Add a handler to respond to GET requests on any URL
-        [_webServer addDefaultHandlerForMethod:@"GET"
-                                requestClass:[GCDWebServerRequest class]
-                                processBlock:^GCDWebServerResponse *(GCDWebServerRequest* request) {
-        
-        return [GCDWebServerDataResponse responseWithHTML:@"<html><body><p>Hello World</p></body></html>"];
-        
-        }];
-        */
-        
-        // Start server on port 8080
-        //[_webServer startWithPort:8080 bonjourName:nil];
-        //NSLog(@"com.zjx.springboard: Visit %@ in your web browser", _webServer.serverURL);
+        if (!init()) { return; }
+        [@"6-init-done" writeToFile:@"/var/mobile/d6.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
         call_system("chown -R mobile:mobile /var/mobile/Library/ZXTouch");
+        [@"7-before-socketServer" writeToFile:@"/var/mobile/d7.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
         socketServer();
+        [@"8-socketServer-returned" writeToFile:@"/var/mobile/d8.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
     });
     %orig;
 }

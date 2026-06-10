@@ -35,8 +35,15 @@ static int windowHeight = 250;
 
             int windowLeftTopCornerX = (int)((screenWidth/scale)/2 - windowWidth/2);
             int windowLeftTopCornerY = (int)((screenHeight/scale)/2 - windowHeight/2);
-            _window = [[UIWindow alloc] initWithFrame:CGRectMake(windowLeftTopCornerX, windowLeftTopCornerY, windowWidth, windowHeight)];
-            _window.windowLevel = UIWindowLevelAlert;
+            // iOS 13+ requires UIWindowScene
+            UIWindowScene *scene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+            if (scene) {
+                _window = [[UIWindow alloc] initWithWindowScene:scene];
+                _window.frame = CGRectMake(windowLeftTopCornerX, windowLeftTopCornerY, windowWidth, windowHeight);
+            } else {
+                _window = [[UIWindow alloc] initWithFrame:CGRectMake(windowLeftTopCornerX, windowLeftTopCornerY, windowWidth, windowHeight)];
+            }
+            _window.windowLevel = UIWindowLevelAlert + 1;
             _window.rootViewController = [[UIViewController alloc] init];
             [_window setBackgroundColor:[UIColor whiteColor]];
 
@@ -144,7 +151,7 @@ static int windowHeight = 250;
 
 - (void) show {
     dispatch_async(dispatch_get_main_queue(), ^{
-        _window.hidden = NO;
+        [_window makeKeyAndVisible];
     });
     isShown = YES;
 }

@@ -278,8 +278,14 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
     if (self)
     {
         dispatch_async(dispatch_get_main_queue(), ^{
-            _window = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, screenBoundsWidth, screenBoundsHeight)];
-            _window.windowLevel = UIWindowLevelAlert;
+            UIWindowScene *scene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+            if (scene) {
+                _window = [[UIWindow alloc] initWithWindowScene:scene];
+                _window.frame = CGRectMake(0, 0, screenBoundsWidth, screenBoundsHeight);
+            } else {
+                _window = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, screenBoundsWidth, screenBoundsHeight)];
+            }
+            _window.windowLevel = UIWindowLevelAlert + 2;
             _window.rootViewController = [[UIViewController alloc] init];
             [_window setBackgroundColor:[UIColor clearColor]];
             [_window setUserInteractionEnabled:NO];
@@ -365,7 +371,7 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 
 - (void) show {
     dispatch_async(dispatch_get_main_queue(), ^{
-        _window.hidden = NO;
+        [_window makeKeyAndVisible];
     });
 }
 

@@ -293,7 +293,7 @@ Boolean init()
         //[_webServer startWithPort:8080 bonjourName:nil];
         //NSLog(@"com.zjx.springboard: Visit %@ in your web browser", _webServer.serverURL);
 
-        system("chown -R mobile:mobile /var/mobile/Library/ZXTouch");
+        call_system("chown -R mobile:mobile /var/mobile/Library/ZXTouch");
 
         socketServer();
     });

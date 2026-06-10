@@ -6,6 +6,7 @@
 #include "Play.h"
 #include "SocketServer.h"
 #include "Toast.h"
+#include "Common.h"
 #include "UIKeyboard.h"
 #include "DeviceInfo.h"
 #include "TouchIndicator/TouchIndicatorWindow.h"

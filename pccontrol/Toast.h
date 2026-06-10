@@ -1,7 +1,8 @@
 #ifndef TOAST_H
 #define TOAST_H
 
-#endif
+#import <UIKit/UIKit.h>
+
 void showToastFromRawData(UInt8 *eventData, NSError **error);
 
 @interface Toast : NSObject

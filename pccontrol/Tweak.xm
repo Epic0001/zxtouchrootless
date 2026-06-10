@@ -273,14 +273,24 @@ static void zxtouch_springboard_ready(CFNotificationCenterRef center, void *obse
 }
 
 %ctor{
-    CFNotificationCenterAddObserver(
-        CFNotificationCenterGetDarwinNotifyCenter(),
-        NULL,
-        zxtouch_springboard_ready,
-        CFSTR("com.apple.springboard.hasBecomeActive"),
-        NULL,
-        CFNotificationSuspensionBehaviorDeliverImmediately
-    );
+    [@"ctor-ran" writeToFile:@"/var/mobile/d0_ctor.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+    // Register for multiple notifications in case one doesn't fire on iOS 16
+    for (NSString *notif in @[
+        @"com.apple.springboard.hasBecomeActive",
+        @"com.apple.springboard.finishedStartup",
+        @"SBSpringBoardReadyNotification",
+        @"com.apple.UIKit.activityContinuation.launched"
+    ]) {
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            NULL,
+            zxtouch_springboard_ready,
+            (__bridge CFStringRef)notif,
+            NULL,
+            CFNotificationSuspensionBehaviorDeliverImmediately
+        );
+    }
 }
 
 %hook SpringBoard

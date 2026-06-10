@@ -241,7 +241,7 @@ Boolean init()
 }
 
 %ctor{
-    [@"pccontrol loaded" writeToFile:@"/tmp/pccontrol_ctor.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    [@"pccontrol loaded" writeToFile:@"/var/mobile/pccontrol_ctor.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 }
 
 %hook SpringBoard
@@ -249,11 +249,11 @@ Boolean init()
 
 - (void)applicationDidFinishLaunching:(id)arg1
 {
-    [@"applicationDidFinishLaunching fired" writeToFile:@"/tmp/pccontrol_hook.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    [@"applicationDidFinishLaunching fired" writeToFile:@"/var/mobile/pccontrol_hook.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
     %orig;
-
+    [@"after orig before dispatch" writeToFile:@"/var/mobile/pccontrol_before_dispatch.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        [@"dispatch block started" writeToFile:@"/tmp/pccontrol_dispatch.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        [@"dispatch block started" writeToFile:@"/var/mobile/pccontrol_dispatch.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
         CGFloat screen_scale = [[UIScreen mainScreen] scale];
 
         CGFloat width = [UIScreen mainScreen].bounds.size.width * screen_scale;

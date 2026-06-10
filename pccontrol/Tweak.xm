@@ -240,8 +240,10 @@ Boolean init()
     return true;
 }
 
-static void zxtouch_springboard_ready(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
-{
+%hook SBHomeScreenViewController
+
+- (void)viewDidLoad {
+    %orig;
     static dispatch_once_t once;
     dispatch_once(&once, ^{
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -272,25 +274,8 @@ static void zxtouch_springboard_ready(CFNotificationCenterRef center, void *obse
     });
 }
 
-%ctor{
-    // Only run in SpringBoard
-    if (![NSProcessInfo.processInfo.processName isEqualToString:@"SpringBoard"]) return;
+%end
 
-    %init; // MUST call %init to register all Logos hooks when using a custom %ctor
-
-    [@"ctor-ran" writeToFile:@"/var/mobile/d0_ctor.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-
-    // Schedule init on the main run loop — guaranteed to run since SpringBoard's main loop is active
-    CFRunLoopTimerRef timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault,
-        CFAbsoluteTimeGetCurrent() + 3.0, 0, 0, 0,
-        ^(CFRunLoopTimerRef t) {
-            [@"timer-fired" writeToFile:@"/var/mobile/d0_timer.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-            zxtouch_springboard_ready(NULL, NULL, NULL, NULL, NULL);
-            CFRunLoopTimerInvalidate(t);
-        });
-    CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
-    CFRelease(timer);
+%ctor {
+    %init;
 }
-
-// SpringBoard hook removed - applicationDidFinishLaunching:%orig crashes SpringBoard on iOS 16
-// Init is handled via %ctor + dispatch_after + Darwin notification above

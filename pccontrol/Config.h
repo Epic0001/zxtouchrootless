@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "RootlessPath.h"
+#include <rootless.h>
 
 #define DOCUMENT_ROOT_FOLDER_NAME "ZXTouch"
 #define RECORDING_FILE_FOLDER_NAME "recording"

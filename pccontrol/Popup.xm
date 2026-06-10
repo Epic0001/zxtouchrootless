@@ -1,4 +1,5 @@
 #import "Popup.h"
+#include <rootless.h>
 #import "Screen.h"
 #import "Record.h"
 #include "Play.h"
@@ -87,7 +88,7 @@ static int windowHeight = 250;
             forControlEvents:UIControlEventTouchUpInside];
 
             recordButton.backgroundColor = [UIColor clearColor];
-            [recordButton setImage:[UIImage imageWithContentsOfFile:@"/var/jb/Library/Application Support/zxtouch/start-recording.png"] forState:UIControlStateNormal];
+            [recordButton setImage:[UIImage imageWithContentsOfFile:ROOT_PATH_NS(@"/Library/Application Support/zxtouch/start-recording.png")] forState:UIControlStateNormal];
             [recordButton setTitle:@"REC" forState:UIControlStateNormal];
             [recordButton setTitleColor:[UIColor redColor] forState:UIControlStateNormal];
 
@@ -101,7 +102,7 @@ static int windowHeight = 250;
             forControlEvents:UIControlEventTouchUpInside];
 
             stopButton.backgroundColor = [UIColor clearColor];
-            [stopButton setImage:[UIImage imageWithContentsOfFile:@"/var/jb/Library/Application Support/zxtouch/stop-playing.png"] forState:UIControlStateNormal];
+            [stopButton setImage:[UIImage imageWithContentsOfFile:ROOT_PATH_NS(@"/Library/Application Support/zxtouch/stop-playing.png")] forState:UIControlStateNormal];
             [stopButton setTitle:@"STOP" forState:UIControlStateNormal];
             [stopButton setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
 

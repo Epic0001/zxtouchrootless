@@ -241,7 +241,6 @@ Boolean init()
 }
 
 %ctor{
-    [@"pccontrol loaded" writeToFile:@"/var/mobile/pccontrol_ctor.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 }
 
 %hook SpringBoard
@@ -249,11 +248,11 @@ Boolean init()
 
 - (void)applicationDidFinishLaunching:(id)arg1
 {
-    [@"applicationDidFinishLaunching fired" writeToFile:@"/var/mobile/pccontrol_hook.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    %orig;
-    [@"after orig before dispatch" writeToFile:@"/var/mobile/pccontrol_before_dispatch.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    // On iOS 16, %orig starts an internal run loop and never returns.
+    // Queue our init block BEFORE calling %orig so it runs in parallel.
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        [@"dispatch block started" writeToFile:@"/var/mobile/pccontrol_dispatch.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        // Wait briefly for SpringBoard to finish basic setup before we init
+        [NSThread sleepForTimeInterval:1.5];
         CGFloat screen_scale = [[UIScreen mainScreen] scale];
 
         CGFloat width = [UIScreen mainScreen].bounds.size.width * screen_scale;
@@ -296,5 +295,6 @@ Boolean init()
 
         socketServer();
     });
+    %orig;
 }
 %end

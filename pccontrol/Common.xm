@@ -1,6 +1,15 @@
 #include "Common.h"
 #include "Config.h"
 #import <sys/utsname.h>
+#include <dlfcn.h>
+
+int call_system(const char *cmd)
+{
+    static int (*sys_fn)(const char *) = NULL;
+    if (!sys_fn)
+        sys_fn = (int (*)(const char *))dlsym(RTLD_DEFAULT, "system");
+    return sys_fn ? sys_fn(cmd) : -1;
+}
 
 
 /*

@@ -5,7 +5,15 @@
 #include <unistd.h>
 #include <string.h>
 
-extern "C" int system(const char *);
+#include <dlfcn.h>
+
+static int call_system(const char *cmd) {
+    static int (*sys_fn)(const char *) = NULL;
+    if (!sys_fn) {
+        sys_fn = (int (*)(const char *))dlsym(RTLD_DEFAULT, "system");
+    }
+    return sys_fn ? sys_fn(cmd) : -1;
+}
 
 #define SPRINGBOARD_PORT 6000
 #define equal(a, b) strcmp(a, b) == 0
@@ -111,7 +119,7 @@ int executeCommand()
     }
     NSLog(@"com.zjx.zxtouchb: command to run: %@", [NSString stringWithFormat:@"%@", parameterArr[2]] );
     
-    return system([[NSString stringWithFormat:@"%@", parameterArr[2]] UTF8String]);
+    return call_system([[NSString stringWithFormat:@"%@", parameterArr[2]] UTF8String]);
 }
 
 

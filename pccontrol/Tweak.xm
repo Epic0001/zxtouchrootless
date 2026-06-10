@@ -280,23 +280,16 @@ static void zxtouch_springboard_ready(CFNotificationCenterRef center, void *obse
 
     [@"ctor-ran" writeToFile:@"/var/mobile/d0_ctor.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-    // Use notify_register_dispatch — GCD-based, no CFRunLoop dependency
-    int token;
-    notify_register_dispatch("com.apple.springboard.hasBecomeActive", &token,
-        dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
-        ^(int t) {
-            notify_cancel(t);
-            [@"notif-fired" writeToFile:@"/var/mobile/d0_notif.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    // Schedule init on the main run loop — guaranteed to run since SpringBoard's main loop is active
+    CFRunLoopTimerRef timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault,
+        CFAbsoluteTimeGetCurrent() + 3.0, 0, 0, 0,
+        ^(CFRunLoopTimerRef t) {
+            [@"timer-fired" writeToFile:@"/var/mobile/d0_timer.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
             zxtouch_springboard_ready(NULL, NULL, NULL, NULL, NULL);
+            CFRunLoopTimerInvalidate(t);
         });
-
-    // Fallback: if notification never fires, init after 6 seconds
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 6 * NSEC_PER_SEC),
-        dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
-        ^{
-            [@"fallback-fired" writeToFile:@"/var/mobile/d0_fallback.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-            zxtouch_springboard_ready(NULL, NULL, NULL, NULL, NULL);
-        });
+    CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
+    CFRelease(timer);
 }
 
 // SpringBoard hook removed - applicationDidFinishLaunching:%orig crashes SpringBoard on iOS 16

@@ -371,7 +371,14 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 
 - (void) show {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [_window makeKeyAndVisible];
+        // Cover full screen in any orientation
+        _window.frame = [UIScreen mainScreen].bounds;
+        _window.hidden = NO;
+        // Update frame on rotation
+        [[NSNotificationCenter defaultCenter] addObserverForName:UIDeviceOrientationDidChangeNotification
+            object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *n) {
+                _window.frame = [UIScreen mainScreen].bounds;
+            }];
     });
 }
 

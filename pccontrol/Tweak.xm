@@ -249,9 +249,10 @@ Boolean init()
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             [@"1-block-started" writeToFile:@"/var/mobile/d1.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-            CGFloat screen_scale = [[UIScreen mainScreen] scale];
-            CGFloat width = [UIScreen mainScreen].bounds.size.width * screen_scale;
-            CGFloat height = [UIScreen mainScreen].bounds.size.height * screen_scale;
+            // nativeBounds is always in portrait physical pixels, unaffected by rotation
+            CGRect nativeBounds = [UIScreen mainScreen].nativeBounds;
+            CGFloat width = nativeBounds.size.width;
+            CGFloat height = nativeBounds.size.height;
             [Screen setScreenSize:(width<height?width:height) height:(width>height?width:height)];
             [@"3-screen-set" writeToFile:@"/var/mobile/d3.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
 

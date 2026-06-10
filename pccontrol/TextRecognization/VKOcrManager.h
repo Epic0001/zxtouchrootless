@@ -1,9 +1,10 @@
 #ifndef VKOcrManager_H
 #define VKOcrManager_H
 
-#endif
-
+#import <Foundation/Foundation.h>
 #import <Vision/Vision.h>
+#import <CoreImage/CoreImage.h>
+#import <UIKit/UIKit.h>
 
 @interface VKOcrManager : NSObject
 - (id)initWithCIImage:(CIImage*)image area:(CGRect)aarea orientation:(int)orientation;
@@ -21,3 +22,5 @@
 - (void)setCorrection:(BOOL)correct;
 
 @end
+
+#endif

@@ -1,6 +1,8 @@
 #ifndef TOUCH_INDICATOR_H
 #define TOUCH_INDICATOR_H
 
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
 void handleTouchIndicatorTaskWithRawData(UInt8* eventData, NSError **error);
 void stopTouchIndicator(NSError **error);

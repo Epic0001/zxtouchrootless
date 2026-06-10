@@ -36,6 +36,7 @@ static int windowHeight = 250;
             int windowLeftTopCornerY = (int)((screenHeight/scale)/2 - windowHeight/2);
             _window = [[UIWindow alloc] initWithFrame:CGRectMake(windowLeftTopCornerX, windowLeftTopCornerY, windowWidth, windowHeight)];
             _window.windowLevel = UIWindowLevelAlert;
+            _window.rootViewController = [[UIViewController alloc] init];
             [_window setBackgroundColor:[UIColor whiteColor]];
 
             _window.layer.borderColor = [UIColor whiteColor].CGColor;
@@ -86,7 +87,9 @@ static int windowHeight = 250;
             forControlEvents:UIControlEventTouchUpInside];
 
             recordButton.backgroundColor = [UIColor clearColor];
-            [recordButton setImage:[UIImage imageWithContentsOfFile:@"/Library/Application Support/zxtouch/start-recording.png"] forState:UIControlStateNormal];
+            [recordButton setImage:[UIImage imageWithContentsOfFile:@"/var/jb/Library/Application Support/zxtouch/start-recording.png"] forState:UIControlStateNormal];
+            [recordButton setTitle:@"REC" forState:UIControlStateNormal];
+            [recordButton setTitleColor:[UIColor redColor] forState:UIControlStateNormal];
 
             recordButton.frame = CGRectMake(30, headerSize.height + 10, 50, 50);
             [_window addSubview:recordButton];
@@ -98,7 +101,9 @@ static int windowHeight = 250;
             forControlEvents:UIControlEventTouchUpInside];
 
             stopButton.backgroundColor = [UIColor clearColor];
-            [stopButton setImage:[UIImage imageWithContentsOfFile:@"/Library/Application Support/zxtouch/stop-playing.png"] forState:UIControlStateNormal];
+            [stopButton setImage:[UIImage imageWithContentsOfFile:@"/var/jb/Library/Application Support/zxtouch/stop-playing.png"] forState:UIControlStateNormal];
+            [stopButton setTitle:@"STOP" forState:UIControlStateNormal];
+            [stopButton setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
 
             stopButton.frame = CGRectMake(100, headerSize.height + 10, 50, 50);
             [_window addSubview:stopButton];

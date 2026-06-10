@@ -20,6 +20,10 @@ mkdir -p /var/mobile/Library/ZXTouch/config/tweak/
 mkdir -p /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/
 chown -R mobile:mobile /var/mobile/Library/ZXTouch
 
+# python3 lands at /var/jb/bin/python3 but ScriptPlayer looks at /var/jb/usr/bin/python3
+mkdir -p /var/jb/usr/bin
+ln -sf /var/jb/bin/python3 /var/jb/usr/bin/python3 2>/dev/null || true
+
 # Strip expired dev provisioning profile and re-sign with ldid
 APP=/var/jb/Applications/zxtouch.app
 rm -f "$APP/embedded.mobileprovision"

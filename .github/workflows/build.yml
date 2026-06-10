@@ -1,0 +1,36 @@
+name: Build Rootless Package
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Theos
+        run: |
+          brew install dpkg ldid
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          git clone https://github.com/theos/sdks.git $HOME/theos/sdks
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+
+      - name: Build Package
+        run: make package THEOS_PACKAGE_SCHEME=rootless FINALPACKAGE=1
+        env:
+          THEOS: /Users/runner/theos
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: rootless-deb
+          path: packages/*.deb

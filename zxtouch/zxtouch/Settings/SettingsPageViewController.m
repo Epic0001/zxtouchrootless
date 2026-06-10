@@ -8,7 +8,6 @@
 #import "SettingsPageViewController.h"
 #import "ScriptListTableCell.h"
 #import "TouchIndicatorConfigurationViewController.h"
-#import "ActivatorConfigurationViewController.h"
 #import "Util.h"
 #import "Socket.h"
 
@@ -19,7 +18,6 @@
 #import "GCDWebServer.h"
 #import "GCDWebServerDataResponse.h"
 
-#import "libactivator.h"
 #import <dlfcn.h>
 #import <objc/runtime.h>
 #import "Config.h"
@@ -67,8 +65,6 @@
             @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"webServer", nil), @"switch_click_handler": NSStringFromSelector(@selector(handleWebServerWithSwitchCellInstance:)), @"switch_init_status": @(NO)}
         ],
         @[
-            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Activator", @"secondary_title": @"", @"row_click_handler": NSStringFromSelector(@selector(handleActivatorWithEntryCellInstance:))},
-            @{@"type": @(SETTING_CELL_ENTRY), @"title": NSLocalizedString(@"configActivatorEvents", nil), @"secondary_title": @"", @"row_click_handler": NSStringFromSelector(@selector(handleConfigActivatorEventsWithEntryCellInstance:))},
             @{@"type": @(SETTING_CELL_ENTRY), @"title": NSLocalizedString(@"touchIndicator", nil), @"secondary_title": @"", @"row_click_handler": NSStringFromSelector(@selector(handleTouchIndicatorWithEntryCellInstance:))},
             @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"doubleClickShowPopup", nil), @"switch_click_handler": NSStringFromSelector(@selector(handlePopupWindowDoubleClick:)), @"switch_init_status": @(doubleClickPopup)}
         ],
@@ -124,22 +120,6 @@
     [socket close];
 }
 
-- (void)handleConfigActivatorEventsWithEntryCellInstance:(TableViewCellWithEntry*)cell {
-    dlopen("/usr/lib/libactivator.dylib", RTLD_LAZY);
-    Class ac = objc_getClass("LAActivator");
-    if (ac) {
-        
-        UIStoryboard *sb = [UIStoryboard storyboardWithName:@"SettingPages" bundle:nil];
-        ActivatorConfigurationViewController *vc = [sb instantiateViewControllerWithIdentifier:@"ActivatorConfigurationViewController"];
-        vc.title = NSLocalizedString(@"configActivatorEvents", nil);
-        [self.navigationController pushViewController:vc animated:YES];
-    }
-    else
-    {
-        [Util showAlertBoxWithOneOption:self title:@"Error" message:NSLocalizedString(@"activatorNeedInstall", nil) buttonString:@"OK"];
-    }
-}
-
 - (void)handleWebServerWithSwitchCellInstance:(UISwitch*)s {
     if ([s isOn])
     {
@@ -149,21 +129,6 @@
     else
     {
         NSLog(@"Stop WebServer");
-    }
-}
-
-- (void)handleActivatorWithEntryCellInstance:(TableViewCellWithEntry*)cell {
-    dlopen("/usr/lib/libactivator.dylib", RTLD_LAZY);
-    Class la = objc_getClass("LAListenerSettingsViewController");
-    if (la) {
-        LAListenerSettingsViewController *vc = [[la alloc] init];
-        [vc setListenerName:@"com.zjx.zxtouch"];
-        vc.title = @"Assign Activator Events";
-        [self.navigationController pushViewController:vc animated:YES];
-    }
-    else
-    {
-        [Util showAlertBoxWithOneOption:self title:@"Error" message:NSLocalizedString(@"activatorNeedInstall", nil) buttonString:@"OK"];
     }
 }
 

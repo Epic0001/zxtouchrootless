@@ -1,7 +1,7 @@
 Package: com.zjx.appdelegate
 Name: ZXTouch-appdelegate
-Version: 0.0.1
-Architecture: iphoneos-arm
+Version: 0.1.0
+Architecture: iphoneos-arm64
 Description: A component of zxtouch inside apps that works for zxtouch
 Maintainer: Jason Z
 Author: Jason Z

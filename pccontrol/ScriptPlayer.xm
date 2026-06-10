@@ -248,9 +248,9 @@ static BOOL isPlaying = false;
     }
     
     // check python exists
-    if (![[NSFileManager defaultManager] fileExistsAtPath:@"/bin/python3"])
+    if (![[NSFileManager defaultManager] fileExistsAtPath:@"/var/jb/usr/bin/python3"])
     {
-        showAlertBox(@"Error", @"Cannot play this script. /bin/python3 not found. Please install Python3.7 on your device.", 999);
+        showAlertBox(@"Error", @"Cannot play this script. python3 not found. Please install Python 3 on your device.", 999);
         isPlaying = false;
         return;
     }
@@ -261,7 +261,7 @@ static BOOL isPlaying = false;
         isPlaying = false;
         return;
     }
-    NSString *commandToRun = [NSString stringWithFormat:@"sudo zxtouchb -e \"python3 -u \\\"%@\\\" 2>&1 | /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh\" >> /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output", filePath];
+    NSString *commandToRun = [NSString stringWithFormat:@"/var/jb/usr/bin/python3 -u \"%@\" 2>&1 | /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh >> /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output", filePath];
     NSLog(@"com.zjx.springboard: command to run for running py file %@", commandToRun);
 
     // here I made it run in background because of a weird thing: ios objc cannot call second system() if the first system() does not return

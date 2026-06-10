@@ -1,8 +1,8 @@
 Package: com.zjx.zxtouch-binary
 Name: zxtouch-bin
-Version: 0.0.1
-Architecture: iphoneos-arm
-Description: no description
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: ZXTouch helper binary
 Maintainer: Jason Z
 Author: Jason Z
 Section: System

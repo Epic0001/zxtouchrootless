@@ -216,22 +216,6 @@
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.row == 3)
-    {
-        dlopen("/usr/lib/libactivator.dylib", RTLD_LAZY);
-        Class la = objc_getClass("LAActivator");
-        if (la)
-        {
-            ScriptPlaySettingsActivatorViewController *vc = [[ScriptPlaySettingsActivatorViewController alloc] init];
-            vc.title = @"Set Trigger For Script";
-            
-            [self.navigationController pushViewController:vc animated:YES];
-        }
-        else
-        {
-            [Util showAlertBoxWithOneOption:self title:@"Error" message:NSLocalizedString(@"activatorNeedInstall", nil) buttonString:@"OK"];
-        }
-    }
 }
 
 /*

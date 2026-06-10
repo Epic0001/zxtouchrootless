@@ -11,7 +11,7 @@ extern CGFloat device_screen_width;
 extern CGFloat device_screen_height;
 
 static int windowWidth = 250;
-static int windowHeight = 250;
+static int windowHeight = 155;
 
 @implementation PopupWindow
 {
@@ -91,6 +91,17 @@ static int windowHeight = 250;
             stopButton.layer.borderWidth = 1.0f;
             stopButton.layer.cornerRadius = 8.0f;
             [contentView addSubview:stopButton];
+
+            // PLAY LAST button
+            UIButton *playButton = [UIButton buttonWithType:UIButtonTypeSystem];
+            [playButton addTarget:self action:@selector(playLastScript) forControlEvents:UIControlEventTouchUpInside];
+            [playButton setTitle:@"▶ PLAY LAST" forState:UIControlStateNormal];
+            [playButton setTitleColor:[UIColor systemGreenColor] forState:UIControlStateNormal];
+            playButton.frame = CGRectMake(10, 95, 190, 40);
+            playButton.layer.borderColor = [UIColor systemGreenColor].CGColor;
+            playButton.layer.borderWidth = 1.0f;
+            playButton.layer.cornerRadius = 8.0f;
+            [contentView addSubview:playButton];
         });
         isShown = NO;        
     }
@@ -106,6 +117,27 @@ static int windowHeight = 250;
         {
             showAlertBox(@"Error", [NSString stringWithFormat:@"Unable to start recording. Reason: %@",[err localizedDescription]], 999);
             return;
+        }
+    });
+}
+
+- (void) playLastScript {
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        [self hide];
+        NSString *scriptsPath = getScriptsFolder();
+        NSError *err = nil;
+        NSArray *scripts = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:scriptsPath error:&err];
+        if (!scripts || scripts.count == 0) {
+            showAlertBox(@"No Scripts", @"No recorded scripts found.", 999);
+            return;
+        }
+        NSArray *sorted = [scripts sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+        NSString *lastScript = [sorted lastObject];
+        NSString *scriptPath = [scriptsPath stringByAppendingPathComponent:lastScript];
+        NSError *playErr = nil;
+        playScript((UInt8*)[scriptPath UTF8String], &playErr);
+        if (playErr) {
+            showAlertBox(@"Error", [playErr localizedDescription], 999);
         }
     });
 }

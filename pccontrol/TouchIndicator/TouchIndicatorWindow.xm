@@ -244,15 +244,21 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 
             IOHIDFloat majorRadius = IOHIDEventGetFloatValue(event, 0xb0014);
 
-            CGFloat xOnScreen = x * screenBoundsWidth;
-            CGFloat yOnScreen = y * screenBoundsHeight;
+            // IOHIDEvent coords are normalized in portrait physical space (0.0-1.0)
+            // Convert to portrait points, then to current orientation UIKit points
+            CGFloat portraitX = x * (screenBoundsWidth / scale);
+            CGFloat portraitY = y * (screenBoundsHeight / scale);
+            CGPoint portraitPoint = CGPointMake(portraitX, portraitY);
+            CGPoint uiPoint = [[UIScreen mainScreen].fixedCoordinateSpace
+                convertPoint:portraitPoint
+                toCoordinateSpace:[UIScreen mainScreen].coordinateSpace];
 
             if ( touch == 1 && eventMask & 2 )
                 // touch down
-                [touchIndicatorWindow showIndicator:index withX:xOnScreen andY:yOnScreen majorRadius:majorRadius];
+                [touchIndicatorWindow showIndicator:index withX:uiPoint.x andY:uiPoint.y majorRadius:majorRadius];
             else if ( touch == 1 && eventMask & 4 )
                 // touch move
-                [touchIndicatorWindow moveIndicator:index x:xOnScreen y:yOnScreen majorRadius:majorRadius];
+                [touchIndicatorWindow moveIndicator:index x:uiPoint.x y:uiPoint.y majorRadius:majorRadius];
 
             else if (!touch && (eventMask & 2) )
                 // touch up

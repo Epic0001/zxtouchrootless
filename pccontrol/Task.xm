@@ -105,7 +105,7 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
     else if (taskType == TASK_RUN_SHELL)
     {
         @autoreleasepool{
-            system2([[NSString stringWithFormat:@"%s -c \"%s\"", ROOT_PATH("/bin/sh"), eventData] UTF8String], NULL, NULL);
+            system2([[NSString stringWithFormat:@"%@ -c \"%s\"", ROOT_PATH_NS(@"/bin/sh"), eventData] UTF8String], NULL, NULL);
             notifyClient((UInt8*)"0\r\n", writeStreamRef);
         }
     }

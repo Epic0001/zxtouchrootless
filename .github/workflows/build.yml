@@ -71,6 +71,7 @@ jobs:
         run: bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
         env:
           THEOS: ${{ github.workspace }}/theos
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ── Rootless (Dopamine) build ──────────────────────────────────────────
       - name: Build Rootless .deb

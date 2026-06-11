@@ -172,7 +172,7 @@ static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef serv
             if (isRecordingStart())
             {
                 stopRecording();
-                [Toast showToastWithContent:@"Recording saved" type:4 duration:1.5f position:0 fontSize:0];
+                showAlertBox(@"ZXTouch", @"Recording stopped and saved.", 1);
                 [popupWindow show];
                 return;
             }

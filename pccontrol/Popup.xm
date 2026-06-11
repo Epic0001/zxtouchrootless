@@ -18,7 +18,7 @@ static UIButton* makeBtn(NSString *title, UIColor *color) {
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     [b setTitle:title forState:UIControlStateNormal];
     b.titleLabel.font = [UIFont systemFontOfSize:14];
-    b.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+    b.backgroundColor = [UIColor secondarySystemBackgroundColor];
     b.layer.cornerRadius = 8;
     b.layer.borderColor = color.CGColor;
     b.layer.borderWidth = 1;
@@ -80,9 +80,9 @@ static UIView* makeSep() {
         _window.autoresizingMask = UIViewAutoresizingNone; // prevent auto-stretch on rotation
 
         UIViewController *rvc = [[UIViewController alloc] init];
-        rvc.view.backgroundColor = [UIColor colorWithWhite:0.97 alpha:1.0];
+        rvc.view.backgroundColor = [UIColor systemBackgroundColor];
         rvc.view.layer.cornerRadius = 16;
-        rvc.view.layer.borderColor = [UIColor colorWithWhite:0.8 alpha:1.0].CGColor;
+        rvc.view.layer.borderColor = [UIColor separatorColor].CGColor;
         rvc.view.layer.borderWidth = 1;
         rvc.view.clipsToBounds = YES;
         _window.rootViewController = rvc;
@@ -91,7 +91,7 @@ static UIView* makeSep() {
         // Header
         UILabel *ttl = [[UILabel alloc] initWithFrame:CGRectMake(12,10,pw-100,28)];
         ttl.text = @"ZXTouch"; ttl.font = [UIFont boldSystemFontOfSize:17];
-        ttl.textColor = [UIColor blackColor]; [cv addSubview:ttl];
+        ttl.textColor = [UIColor labelColor]; [cv addSubview:ttl];
 
         // ⚙️ toggle — tap to enable/disable "ask settings before play"
         _gearBtn = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -140,7 +140,7 @@ static UIView* makeSep() {
         // Scripts label — shows hint when settings mode on
         UILabel *sl = [[UILabel alloc] initWithFrame:CGRectMake(12, 54+BTN_H+14, pw-20, 18)];
         sl.text = @"Scripts"; sl.font = [UIFont boldSystemFontOfSize:12];
-        sl.textColor = [UIColor grayColor]; [cv addSubview:sl];
+        sl.textColor = [UIColor secondaryLabelColor]; [cv addSubview:sl];
 
         // Script scroll view
         CGFloat scrollTop = 54+BTN_H+36;
@@ -158,8 +158,17 @@ static UIView* makeSep() {
 
 - (UIView*) makeSepAt:(CGRect)r {
     UIView *s = [[UIView alloc] initWithFrame:r];
-    s.backgroundColor = [UIColor colorWithWhite:0.85 alpha:1.0];
+    s.backgroundColor = [UIColor separatorColor];
     return s;
+}
+
+void applyPanelDarkMode(BOOL dark) {
+    extern PopupWindow *popupWindow;
+    if (popupWindow) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [popupWindow setDarkMode:dark];
+        });
+    }
 }
 
 
@@ -337,10 +346,24 @@ static UIView* makeSep() {
     });
 }
 
+- (void) setDarkMode:(BOOL)dark {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        _window.overrideUserInterfaceStyle = dark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    });
+}
+
 - (void) show {
     [self refreshScriptList];
     [self repositionWindow];
     dispatch_async(dispatch_get_main_queue(), ^{
+        // Apply dark mode from config each time the panel opens
+        NSDictionary *cfg = [[NSDictionary alloc] initWithContentsOfFile:SCRIPT_PLAY_CONFIG_PATH];
+        NSDictionary *tweakCfg = nil;
+        NSString *configFilePath = [NSString stringWithFormat:@"/var/mobile/Library/ZXTouch/config/tweak/config.plist"];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:configFilePath])
+            tweakCfg = [[NSDictionary alloc] initWithContentsOfFile:configFilePath];
+        BOOL dark = tweakCfg[@"dark_mode"] ? [tweakCfg[@"dark_mode"] boolValue] : NO;
+        _window.overrideUserInterfaceStyle = dark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
         _window.hidden = NO;
     });
     isShown = YES;

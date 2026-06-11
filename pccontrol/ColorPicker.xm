@@ -141,9 +141,9 @@ NSString* searchRGBFromRawData(UInt8 *eventData, NSError **error)
     CGImageRelease(imageRef);
     CGContextRelease(context);
     
-    uchar r = buffer[0];
-    uchar g = buffer[1];
-    uchar b = buffer[2];
+    unsigned char r = buffer[0];
+    unsigned char g = buffer[1];
+    unsigned char b = buffer[2];
 
     free(buffer);
     return @{@"blue": @(b), @"red": @(r), @"green": @(g)};
@@ -155,9 +155,9 @@ NSString* searchRGBFromRawData(UInt8 *eventData, NSError **error)
 
     Vec3b intensity = img.at<Vec3b>(y, x);
     // Don't know why. This version of opencv stores read at [0] rather than [2]
-    uchar blue = intensity.val[0];
-    uchar green = intensity.val[1];
-    uchar red = intensity.val[2];
+    unsigned char blue = intensity.val[0];
+    unsigned char green = intensity.val[1];
+    unsigned char red = intensity.val[2];
     //NSLog(@"com.zjx.springboard: blue: %u, green: %u, red: %u.", blue, green, red);
 
     NSDictionary *result = @{@"blue": @(blue), @"red": @(red), @"green": @(green)};
@@ -183,9 +183,9 @@ NSString* searchRGBFromRawData(UInt8 *eventData, NSError **error)
         for (int currentX = x; currentX <= searchMaxX; currentX += skip + 1)
         {
             Vec3b intensity = img.at<Vec3b>(currentY, currentX);
-            uchar blue = intensity.val[0];
-            uchar green = intensity.val[1];
-            uchar red = intensity.val[2];
+            unsigned char blue = intensity.val[0];
+            unsigned char green = intensity.val[1];
+            unsigned char red = intensity.val[2];
 
             //NSLog(@"com.zjx.springboard: x: %d, y: %d, blue: %u, green: %u, red: %u.", currentX, currentY, blue, green, red);
             if (red >= redMin && red <= redMax && green >= greenMin && green <= greenMax && blue >= blueMin && blue <= blueMax)
@@ -236,9 +236,9 @@ NSString* searchRGBFromRawData(UInt8 *eventData, NSError **error)
                 return @"-1;;-1;;-1;;-1;;-1";
             }
 
-            uchar red = buffer[baseAddress];
-            uchar green = buffer[baseAddress+1];
-            uchar blue = buffer[baseAddress+2];
+            unsigned char red = buffer[baseAddress];
+            unsigned char green = buffer[baseAddress+1];
+            unsigned char blue = buffer[baseAddress+2];
 
 
             //NSLog(@"com.zjx.springboard: x: %d, y: %d, blue: %u, green: %u, red: %u.", currentX, currentY, blue, green, red);

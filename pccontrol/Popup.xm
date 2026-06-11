@@ -36,12 +36,10 @@ static UIView* makeSep() {
 {
     UIWindow       *_window;
     UIScrollView   *_scriptScrollView;
-    UIView         *_settingsView;
-    UILabel        *_repeatLabel;
-    UILabel        *_speedLabel;
+    UIButton       *_gearBtn;
     int             _repeatCount;
     float           _speed;
-    BOOL            _settingsVisible;
+    BOOL            _settingsVisible;  // whether to show settings dialog before playing
     BOOL            isShown;
 }
 
@@ -77,6 +75,7 @@ static UIView* makeSep() {
             _window = [[UIWindow alloc] initWithFrame:CGRectMake(cx, cy, pw, ph)];
         }
         _window.windowLevel = UIWindowLevelAlert + 1;
+        _window.autoresizingMask = UIViewAutoresizingNone; // prevent auto-stretch on rotation
 
         UIViewController *rvc = [[UIViewController alloc] init];
         rvc.view.backgroundColor = [UIColor colorWithWhite:0.97 alpha:1.0];
@@ -92,14 +91,18 @@ static UIView* makeSep() {
         ttl.text = @"ZXTouch"; ttl.font = [UIFont boldSystemFontOfSize:17];
         ttl.textColor = [UIColor blackColor]; [cv addSubview:ttl];
 
-        // Settings gear button
-        UIButton *gearBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        [gearBtn setTitle:@"⚙️" forState:UIControlStateNormal];
-        gearBtn.frame = CGRectMake(pw-80, 6, 36, 36);
-        [gearBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
-            [self toggleSettings];
+        // ⚙️ toggle — tap to enable/disable "ask settings before play"
+        _gearBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        [_gearBtn setTitle:@"⚙️" forState:UIControlStateNormal];
+        _gearBtn.frame = CGRectMake(pw-80, 6, 36, 36);
+        _gearBtn.layer.cornerRadius = 8;
+        [_gearBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+            _settingsVisible = !_settingsVisible;
+            _gearBtn.backgroundColor = _settingsVisible ?
+                [UIColor colorWithRed:0.2 green:0.6 blue:1.0 alpha:0.25] :
+                [UIColor clearColor];
         }] forControlEvents:UIControlEventTouchUpInside];
-        [cv addSubview:gearBtn];
+        [cv addSubview:_gearBtn];
 
         // Close button
         UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -130,16 +133,9 @@ static UIView* makeSep() {
         }] forControlEvents:UIControlEventTouchUpInside];
         [cv addSubview:stopBtn];
 
-        // Settings view (hidden initially)
-        _settingsView = [[UIView alloc] initWithFrame:CGRectMake(0, 54+BTN_H+4, pw, 0)];
-        _settingsView.backgroundColor = [UIColor colorWithWhite:0.93 alpha:1.0];
-        _settingsView.clipsToBounds = YES;
-        [cv addSubview:_settingsView];
-        [self buildSettingsInView:_settingsView width:pw];
-
         [cv addSubview:[self makeSepAt:CGRectMake(0, 54+BTN_H+8, pw, 1)]];
 
-        // Scripts label
+        // Scripts label — shows hint when settings mode on
         UILabel *sl = [[UILabel alloc] initWithFrame:CGRectMake(12, 54+BTN_H+14, pw-20, 18)];
         sl.text = @"Scripts"; sl.font = [UIFont boldSystemFontOfSize:12];
         sl.textColor = [UIColor grayColor]; [cv addSubview:sl];
@@ -150,8 +146,11 @@ static UIView* makeSep() {
         _scriptScrollView.backgroundColor = [UIColor clearColor];
         [cv addSubview:_scriptScrollView];
 
-        // Store dynamic refs
-        _window.tag = 999;
+        // Reposition on rotation
+        [[NSNotificationCenter defaultCenter] addObserverForName:UIDeviceOrientationDidChangeNotification
+            object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *n) {
+                if (isShown) [self repositionWindow];
+            }];
     });
 }
 
@@ -161,74 +160,7 @@ static UIView* makeSep() {
     return s;
 }
 
-- (void) buildSettingsInView:(UIView*)sv width:(CGFloat)pw {
-    CGFloat y = 8;
 
-    // Repeat
-    UILabel *rl = [[UILabel alloc] initWithFrame:CGRectMake(12,y,80,22)];
-    rl.text = @"Repeat:"; rl.font = [UIFont systemFontOfSize:13]; rl.textColor = [UIColor darkGrayColor];
-    [sv addSubview:rl];
-
-    UIButton *rMinus = makeBtn(@"−", [UIColor systemBlueColor]);
-    rMinus.frame = CGRectMake(pw-130, y, 36, 28);
-    [rMinus addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
-        if (_repeatCount > 0) { _repeatCount--; [self updateSettingsLabels]; }
-    }] forControlEvents:UIControlEventTouchUpInside];
-    [sv addSubview:rMinus];
-
-    _repeatLabel = [[UILabel alloc] initWithFrame:CGRectMake(pw-90,y,40,28)];
-    _repeatLabel.textAlignment = NSTextAlignmentCenter;
-    _repeatLabel.font = [UIFont systemFontOfSize:14];
-    [sv addSubview:_repeatLabel];
-
-    UIButton *rPlus = makeBtn(@"+", [UIColor systemBlueColor]);
-    rPlus.frame = CGRectMake(pw-48, y, 36, 28);
-    [rPlus addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
-        _repeatCount++; [self updateSettingsLabels];
-    }] forControlEvents:UIControlEventTouchUpInside];
-    [sv addSubview:rPlus];
-    y += 36;
-
-    // Speed
-    UILabel *spl = [[UILabel alloc] initWithFrame:CGRectMake(12,y,60,22)];
-    spl.text = @"Speed:"; spl.font = [UIFont systemFontOfSize:13]; spl.textColor = [UIColor darkGrayColor];
-    [sv addSubview:spl];
-
-    NSArray *speeds = @[@(0.5f), @(1.0f), @(1.5f), @(2.0f)];
-    NSArray *labels = @[@"0.5×", @"1×", @"1.5×", @"2×"];
-    CGFloat sbtnW = (pw - 80) / 4.0f;
-    for (int i = 0; i < 4; i++) {
-        float spd = [speeds[i] floatValue];
-        UIButton *sb = makeBtn(labels[i], [UIColor systemBlueColor]);
-        sb.frame = CGRectMake(70 + i*sbtnW, y, sbtnW - 4, 28);
-        [sb addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
-            _speed = spd; [self updateSettingsLabels];
-        }] forControlEvents:UIControlEventTouchUpInside];
-        [sv addSubview:sb];
-    }
-    _speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(12,y+2,60,18)];
-    _speedLabel.font = [UIFont systemFontOfSize:11]; _speedLabel.textColor = [UIColor grayColor];
-    [sv addSubview:_speedLabel];
-
-    [self updateSettingsLabels];
-}
-
-- (void) updateSettingsLabels {
-    _repeatLabel.text = _repeatCount == 0 ? @"1×" : [NSString stringWithFormat:@"%d×", _repeatCount+1];
-    _speedLabel.text = [NSString stringWithFormat:@"%.1f×", _speed];
-}
-
-- (void) toggleSettings {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        _settingsVisible = !_settingsVisible;
-        CGFloat newH = _settingsVisible ? 80 : 0;
-        [UIView animateWithDuration:0.2 animations:^{
-            CGRect f = _settingsView.frame;
-            f.size.height = newH;
-            _settingsView.frame = f;
-        }];
-    });
-}
 
 - (void) repositionWindow {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -371,11 +303,14 @@ static UIView* makeSep() {
 }
 
 - (void) stopPlaying {
+    if (!isScriptPlaying()) {
+        // No script running — do nothing silently
+        return;
+    }
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
         NSError *err = nil;
         stopScriptPlaying(&err);
-        if (err) showAlertBox(@"Error", [NSString stringWithFormat:@"Stop error: %@", err], 999);
-        else showAlertBox(@"ZXTouch", @"Script stopped.", 1);
+        // Don't show alert here — volume button handler shows it
     });
 }
 

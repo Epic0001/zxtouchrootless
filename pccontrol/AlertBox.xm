@@ -14,29 +14,47 @@ void showAlertBoxFromRawData(UInt8 *eventData, NSError **error)
     showAlertBox(alertDataArray[0], alertDataArray[1], [alertDataArray[2] intValue]);
 }
 
+// Dedicated window for hosting alert controllers (survives until dismissed)
+static NSMutableArray *_alertWindows = nil;
+
 void showAlertBox(NSString* title, NSString* content, int dismissTime)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (!_alertWindows) _alertWindows = [NSMutableArray array];
+
+        UIWindowScene *scene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+        UIWindow *win;
+        if (scene) {
+            win = [[UIWindow alloc] initWithWindowScene:scene];
+        } else {
+            win = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+        }
+        win.windowLevel = UIWindowLevelAlert + 3;
+        UIViewController *rvc = [[UIViewController alloc] init];
+        rvc.view.backgroundColor = [UIColor clearColor];
+        win.rootViewController = rvc;
+        win.hidden = NO;
+        [_alertWindows addObject:win];
+
         UIAlertController *alert = [UIAlertController
             alertControllerWithTitle:title
             message:content
             preferredStyle:UIAlertControllerStyleAlert];
+
+        void (^cleanup)(void) = ^{
+            [_alertWindows removeObject:win];
+        };
+
         [alert addAction:[UIAlertAction actionWithTitle:@"OK"
-            style:UIAlertActionStyleDefault handler:nil]];
+            style:UIAlertActionStyleDefault
+            handler:^(UIAlertAction *a) { cleanup(); }]];
 
-        // Find a view controller that can present
-        UIWindowScene *scene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
-        UIViewController *presenter = scene.windows.lastObject.rootViewController;
-        while (presenter.presentedViewController)
-            presenter = presenter.presentedViewController;
+        [rvc presentViewController:alert animated:YES completion:nil];
 
-        [presenter presentViewController:alert animated:YES completion:nil];
-
-        // Auto-dismiss after dismissTime seconds if > 0
         if (dismissTime > 0) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(dismissTime * NSEC_PER_SEC)),
                 dispatch_get_main_queue(), ^{
-                    [alert dismissViewControllerAnimated:YES completion:nil];
+                    [alert dismissViewControllerAnimated:YES completion:cleanup];
                 });
         }
     });

@@ -37,10 +37,11 @@ for VER in python3.11 python3.10 python3.9 python3.8; do
     fi
 done
 
-# Install zxtouch Python module into all known site-packages locations
-for SP in /var/jb/usr/lib/python3*/site-packages; do
+# Install zxtouch Python module into all known package locations
+SRC=/var/jb/usr/lib/python3.7/site-packages/zxtouch
+for SP in /var/jb/usr/lib/python3*/site-packages /var/jb/usr/lib/python3*/dist-packages /var/jb/usr/lib/python3/dist-packages; do
     if [ -d "$SP" ] && [ "$SP" != "/var/jb/usr/lib/python3.7/site-packages" ]; then
-        cp -rn /var/jb/usr/lib/python3.7/site-packages/zxtouch "$SP/" 2>/dev/null || true
+        cp -rn "$SRC" "$SP/" 2>/dev/null || true
     fi
 done
 

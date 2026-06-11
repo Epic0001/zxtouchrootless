@@ -145,12 +145,14 @@
     [[NSUserDefaults standardUserDefaults] setBool:dark forKey:@"dark_mode"];
     [[NSUserDefaults standardUserDefaults] synchronize];
 
-    // Apply to all app windows immediately
-    UIUserInterfaceStyle style = dark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
-    for (UIWindowScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if ([scene isKindOfClass:[UIWindowScene class]]) {
-            for (UIWindow *win in scene.windows) {
-                win.overrideUserInterfaceStyle = style;
+    // Apply to all app windows immediately (iOS 13+)
+    if (@available(iOS 13.0, *)) {
+        UIUserInterfaceStyle style = dark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+        for (UIWindowScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                for (UIWindow *win in ((UIWindowScene *)scene).windows) {
+                    win.overrideUserInterfaceStyle = style;
+                }
             }
         }
     }

@@ -19,6 +19,7 @@ jobs:
 
       - name: Build iOS App
         run: |
+          set -o pipefail
           xcodebuild \
             -project zxtouch/zxtouch.xcodeproj \
             -target zxtouch \
@@ -30,13 +31,21 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            PRODUCT_BUNDLE_IDENTIFIER=com.zjx.zxtouch
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            PRODUCT_BUNDLE_IDENTIFIER=com.zjx.zxtouch \
+            2>&1 | tee xcode_build.log | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)|Compiling|Linking" | tail -40
           echo "--- Built app location ---"
           find ./app-build -name "*.app" -type d 2>/dev/null || echo "No .app found"
 
+      - name: Upload Xcode build log (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-build-log
+          path: xcode_build.log
+
       - name: Sign App with ldid
         run: |
-          # Find the built app wherever xcodebuild put it
           APP=$(find ./app-build -name "zxtouch.app" -type d | head -1)
           echo "App found at: $APP"
           brew install ldid 2>/dev/null || true

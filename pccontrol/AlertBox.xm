@@ -33,7 +33,7 @@ void showAlertBox(NSString* title, NSString* content, int dismissTime)
         UIViewController *rvc = [[UIViewController alloc] init];
         rvc.view.backgroundColor = [UIColor clearColor];
         win.rootViewController = rvc;
-        win.hidden = NO;
+        [win makeKeyAndVisible];
         [_alertWindows addObject:win];
 
         UIAlertController *alert = [UIAlertController
@@ -42,20 +42,26 @@ void showAlertBox(NSString* title, NSString* content, int dismissTime)
             preferredStyle:UIAlertControllerStyleAlert];
 
         void (^cleanup)(void) = ^{
-            [_alertWindows removeObject:win];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                win.hidden = YES;
+                [_alertWindows removeObject:win];
+            });
         };
 
         [alert addAction:[UIAlertAction actionWithTitle:@"OK"
             style:UIAlertActionStyleDefault
             handler:^(UIAlertAction *a) { cleanup(); }]];
 
-        [rvc presentViewController:alert animated:YES completion:nil];
-
-        if (dismissTime > 0) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(dismissTime * NSEC_PER_SEC)),
-                dispatch_get_main_queue(), ^{
-                    [alert dismissViewControllerAnimated:YES completion:cleanup];
-                });
-        }
+        // Small delay so the window's root VC finishes appearing before we present
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)),
+            dispatch_get_main_queue(), ^{
+                [rvc presentViewController:alert animated:YES completion:nil];
+                if (dismissTime > 0) {
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(dismissTime * NSEC_PER_SEC)),
+                        dispatch_get_main_queue(), ^{
+                            [alert dismissViewControllerAnimated:YES completion:cleanup];
+                        });
+                }
+            });
     });
 }

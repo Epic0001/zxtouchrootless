@@ -39,6 +39,7 @@ static UIView* makeSep() {
     UIButton       *_gearBtn;
     int             _repeatCount;
     float           _speed;
+    float           _interval;
     BOOL            _settingsVisible;  // whether to show settings dialog before playing
     BOOL            isShown;
 }
@@ -48,6 +49,7 @@ static UIView* makeSep() {
     if (self) {
         _repeatCount = 0;
         _speed = 1.0f;
+        _interval = 0.0f;
         _settingsVisible = NO;
         isShown = NO;
         [self buildWindow];
@@ -213,15 +215,36 @@ static UIView* makeSep() {
             NSString *fullPath = item[@"path"];
             [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
                 if (_settingsVisible) {
-                    // Settings mode on: ask for confirm with current settings
-                    NSString *settingsInfo = [NSString stringWithFormat:
-                        @"Script: %@\nRepeat: %d time(s)\nSpeed: %.1f×\n\nRun with these settings?",
-                        item[@"label"], _repeatCount + 1, _speed];
-                    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Play Settings"
-                        message:settingsInfo preferredStyle:UIAlertControllerStyleAlert];
+                    UIAlertController *alert = [UIAlertController
+                        alertControllerWithTitle:@"Play Settings"
+                        message:item[@"label"]
+                        preferredStyle:UIAlertControllerStyleAlert];
+                    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+                        tf.placeholder = @"Repeat count (e.g. 3)";
+                        tf.keyboardType = UIKeyboardTypeNumberPad;
+                        tf.text = _repeatCount > 0 ? [NSString stringWithFormat:@"%d", _repeatCount] : @"";
+                    }];
+                    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+                        tf.placeholder = @"Speed (e.g. 1.0)";
+                        tf.keyboardType = UIKeyboardTypeDecimalPad;
+                        tf.text = [NSString stringWithFormat:@"%.1f", _speed];
+                    }];
+                    [alert addTextFieldWithConfigurationHandler:^(UITextField *tf) {
+                        tf.placeholder = @"Interval between runs in sec (e.g. 0)";
+                        tf.keyboardType = UIKeyboardTypeDecimalPad;
+                        tf.text = _interval > 0 ? [NSString stringWithFormat:@"%.1f", _interval] : @"";
+                    }];
                     [alert addAction:[UIAlertAction actionWithTitle:@"Run" style:UIAlertActionStyleDefault handler:^(UIAlertAction *aa) {
+                        NSString *repeatStr  = alert.textFields[0].text;
+                        NSString *speedStr   = alert.textFields[1].text;
+                        NSString *intervalStr = alert.textFields[2].text;
+                        int repeat   = (repeatStr.length > 0)   ? [repeatStr intValue]      : 0;
+                        float sp     = (speedStr.length > 0)    ? [speedStr floatValue]     : 1.0f;
+                        float intv   = (intervalStr.length > 0) ? [intervalStr floatValue]  : 0.0f;
+                        if (sp <= 0) sp = 1.0f;
+                        _repeatCount = repeat; _speed = sp; _interval = intv;
                         [self hide];
-                        [self saveSettings:_repeatCount speed:_speed];
+                        [self saveSettings:_repeatCount speed:_speed interval:_interval];
                         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                             NSError *err = nil;
                             playScript((UInt8*)[fullPath UTF8String], &err);
@@ -235,7 +258,7 @@ static UIView* makeSep() {
                 } else {
                     // Direct play
                     [self hide];
-                    [self saveSettings:_repeatCount speed:_speed];
+                    [self saveSettings:_repeatCount speed:_speed interval:_interval];
                     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                         NSError *err = nil;
                         playScript((UInt8*)[fullPath UTF8String], &err);
@@ -251,12 +274,12 @@ static UIView* makeSep() {
     [_scriptScrollView setContentOffset:CGPointZero animated:NO];
 }
 
-- (void) saveSettings:(int)repeat speed:(float)speed {
+- (void) saveSettings:(int)repeat speed:(float)speed interval:(float)interval {
     NSMutableDictionary *config = [NSMutableDictionary dictionary];
     config[@"scriptPlaybackInfo"] = @{
         SETTINGS_KEY_REPEAT: @(repeat),
         SETTINGS_KEY_SPEED: @(speed),
-        SETTINGS_KEY_INTERVAL: @(0)
+        SETTINGS_KEY_INTERVAL: @(interval)
     };
     [config writeToFile:SCRIPT_PLAY_CONFIG_PATH atomically:YES];
 }

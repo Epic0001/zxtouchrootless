@@ -259,11 +259,19 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
             CGFloat W = b.size.width, H = b.size.height;
             CGFloat xOnScreen, yOnScreen;
 
-            // Read orientation per-event; cache last known-good value so
-            // brief Unknown reads don't glitch back to portrait
-            UIWindowScene *sc = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
-            if (sc && sc.interfaceOrientation != UIInterfaceOrientationUnknown)
-                cachedOrientation = sc.interfaceOrientation;
+            // Orientation source: SpringBoard's own scene (sc.interfaceOrientation)
+            // is unreliable/stale here — it reflects SpringBoard's UI, not the
+            // frontmost app, and only catches up after a physical rotation.
+            // [Screen getScreenOrientation] uses -_frontMostAppOrientation, the
+            // SAME source as get_screen_orientation (which the user confirmed is
+            // correct). Refresh it on each touch-DOWN (cheap, infrequent) and
+            // reuse the cached value for the moves within that gesture.
+            if (touch == 1 && (eventMask & 2))
+            {
+                int o = [Screen getScreenOrientation];
+                if (o >= UIInterfaceOrientationPortrait && o <= UIInterfaceOrientationLandscapeRight)
+                    cachedOrientation = (UIInterfaceOrientation)o;
+            }
             UIInterfaceOrientation ori = cachedOrientation;
 
             switch (ori) {

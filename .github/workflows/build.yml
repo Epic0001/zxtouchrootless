@@ -88,6 +88,11 @@ jobs:
           echo "Saved: artifacts/com.zjx.ioscontrol_${VERSION}_rootless.deb"
 
       # ── Roothide build ─────────────────────────────────────────────────────
+      - name: Swap postinst for Roothide
+        run: |
+          cp layout/DEBIAN/postinst-roothide layout/DEBIAN/postinst
+          chmod +x layout/DEBIAN/postinst
+
       - name: Clean for Roothide build
         run: make clean
         env:

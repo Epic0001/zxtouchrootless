@@ -1,0 +1,77 @@
+#!/bin/sh
+# roothide postinst — uses jbroot command to resolve dynamic jailbreak root path
+
+# Register app with SpringBoard
+UICACHE=$(jbroot /usr/bin/uicache 2>/dev/null)
+if [ -x "$UICACHE" ]; then
+    "$UICACHE" -a
+fi
+
+# sudoers entry for zxtouchb
+ZXTOUCHB=$(jbroot /usr/bin/zxtouchb)
+SUDOERS_D=$(jbroot /etc/sudoers.d)
+if [ -d "$SUDOERS_D" ]; then
+    echo "mobile ALL=(root) NOPASSWD:$ZXTOUCHB" > "$SUDOERS_D/zxtouch"
+    chmod 440 "$SUDOERS_D/zxtouch"
+fi
+
+# Create required app directories
+mkdir -p /var/mobile/Library/ZXTouch/scripts/recording/
+mkdir -p /var/mobile/Library/ZXTouch/config/tweak/
+mkdir -p /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/
+
+# Copy example scripts
+EXAMPLES=$(jbroot /usr/share/zxtouch/examples)
+if [ -d "$EXAMPLES" ]; then
+    cp -rn "$EXAMPLES/"* /var/mobile/Library/ZXTouch/scripts/ 2>/dev/null || true
+fi
+
+chown -R mobile:mobile /var/mobile/Library/ZXTouch
+
+# Patch add_datetime.sh shebang — roothide has no fixed /var/jb path
+SH=$(jbroot /bin/sh)
+SCRIPT=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh
+if [ -f "$SCRIPT" ]; then
+    printf '#!%s\n' "$SH" > /tmp/adt_new.sh
+    tail -n +2 "$SCRIPT" >> /tmp/adt_new.sh
+    mv /tmp/adt_new.sh "$SCRIPT"
+    chmod +x "$SCRIPT"
+fi
+
+# Install zxtouch Python module into active Python3 site-packages
+PYTHON3=$(jbroot /usr/bin/python3)
+if [ ! -x "$PYTHON3" ]; then
+    ln -sf "$(jbroot /bin/python3)" "$PYTHON3" 2>/dev/null || true
+fi
+if [ -x "$PYTHON3" ]; then
+    SITE_PKGS=$(jbroot /usr/lib/python3.7/site-packages)
+    for SP in $("$PYTHON3" -c "import site; print(' '.join(site.getsitepackages()))" 2>/dev/null); do
+        if [ -d "$SP" ]; then
+            cp -rn "$SITE_PKGS/zxtouch" "$SP/" 2>/dev/null || true
+        fi
+    done
+fi
+
+# Re-sign app with roothide entitlements
+APP=$(jbroot /Applications/zxtouch.app)
+rm -f "$APP/embedded.mobileprovision"
+cat > /tmp/zxtouch-ent.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>platform-application</key><true/>
+    <key>com.apple.private.skip-library-validation</key><true/>
+    <key>com.apple.private.security.no-container</key><true/>
+    <key>com.apple.private.security.no-sandbox</key><true/>
+    <key>com.apple.private.security.storage.AppBundles</key><true/>
+    <key>com.apple.private.security.storage.AppDataContainers</key><true/>
+    <key>get-task-allow</key><true/>
+    <key>application-identifier</key><string>com.zjx.zxtouch</string>
+</dict>
+</plist>
+EOF
+LDID=$(jbroot /usr/bin/ldid)
+if [ -x "$LDID" ]; then
+    "$LDID" -S/tmp/zxtouch-ent.plist "$APP/zxtouch"
+fi

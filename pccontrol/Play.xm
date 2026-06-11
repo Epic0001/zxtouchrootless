@@ -34,20 +34,26 @@ int playScript(UInt8* path, NSError **error)
     float playSpeed = 1.0f;
     
     NSLog(@"com.zjx.springboard: path: %s", path);
-    NSMutableDictionary *config;
+    NSDictionary *config = nil;
     if ([[NSFileManager defaultManager] fileExistsAtPath:SCRIPT_PLAY_CONFIG_PATH])
+        config = [[NSDictionary alloc] initWithContentsOfFile:SCRIPT_PLAY_CONFIG_PATH];
+
+    if (config)
     {
-        config = [[NSMutableDictionary alloc] initWithContentsOfFile:SCRIPT_PLAY_CONFIG_PATH];
-        NSMutableDictionary *individualConfigs = [config valueForKey:@"individual_configs"];
-        if (individualConfigs != nil)
+        // Per-script settings (written by ZXTouch app) take priority
+        NSDictionary *individualConfigs = config[@"individual_configs"];
+        NSDictionary *scriptInfo = [individualConfigs valueForKey:[NSString stringWithFormat:@"%s", path]];
+
+        // Fall back to global settings written by the panel
+        if (!scriptInfo)
+            scriptInfo = config[@"scriptPlaybackInfo"];
+
+        if (scriptInfo)
         {
-            NSMutableDictionary *scriptPlaybackInfo = [individualConfigs valueForKey:[NSString stringWithFormat:@"%s",path]];
-            if (scriptPlaybackInfo != nil)
-            {
-                repeatTime = [scriptPlaybackInfo[@"repeat_times"] intValue];
-                sleepBetweenRun = [scriptPlaybackInfo[@"interval"] floatValue];
-                playSpeed = [scriptPlaybackInfo[@"speed"] floatValue];
-            }
+            repeatTime = [scriptInfo[@"repeat_times"] intValue];
+            sleepBetweenRun = [scriptInfo[@"interval"] floatValue];
+            float sp = [scriptInfo[@"speed"] floatValue];
+            if (sp > 0) playSpeed = sp;
         }
     }
     

@@ -314,8 +314,8 @@ static BOOL isPlaying = false;
     }
     else
     {
-        [self clear];
         playHasStoppedCallBack();
+        [self clear];
     }
 
 

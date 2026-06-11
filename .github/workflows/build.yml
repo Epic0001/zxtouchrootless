@@ -95,7 +95,7 @@ jobs:
           rm layout/DEBIAN/postinst-roothide
 
       - name: Clean for Roothide build
-        run: make clean
+        run: make clean && rm -f packages/*.deb
         env:
           THEOS: ${{ github.workspace }}/theos
 

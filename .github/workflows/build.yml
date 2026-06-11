@@ -58,10 +58,19 @@ jobs:
           cp -r "$APP" layout/Applications/zxtouch.app
           echo "App installed to layout"
 
-      - name: Setup Theos
-        uses: beerpiss/theos-action@v1
+      # ── Setup Theos (roothide fork — 100% compat with rootless + adds roothide support) ──
+      - name: Cache roothide Theos
+        id: cache-theos
+        uses: actions/cache@v4
         with:
-          cache: true
+          path: ${{ github.workspace }}/theos
+          key: roothide-theos-${{ runner.os }}-v2
+
+      - name: Install roothide Theos
+        if: steps.cache-theos.outputs.cache-hit != 'true'
+        run: bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
+        env:
+          THEOS: ${{ github.workspace }}/theos
 
       # ── Rootless (Dopamine) build ──────────────────────────────────────────
       - name: Build Rootless .deb
@@ -75,7 +84,7 @@ jobs:
           DEB=$(ls packages/*.deb | head -1)
           VERSION=$(grep '^Version:' pccontrol/control | awk '{print $2}')
           cp "$DEB" "artifacts/com.zjx.ioscontrol_${VERSION}_rootless.deb"
-          echo "Rootless deb: artifacts/com.zjx.ioscontrol_${VERSION}_rootless.deb"
+          echo "Saved: artifacts/com.zjx.ioscontrol_${VERSION}_rootless.deb"
 
       # ── Roothide build ─────────────────────────────────────────────────────
       - name: Clean for Roothide build
@@ -84,7 +93,9 @@ jobs:
           THEOS: ${{ github.workspace }}/theos
 
       - name: Build Roothide .deb
-        run: make package THEOS_PACKAGE_SCHEME=roothide FINALPACKAGE=1
+        # DISABLE_ROOTLESS_COMPAT_WARNING=1 silences the warning about using ROOT_PATH macros
+        # with the roothide scheme — they are fully compatible per roothide/theos docs
+        run: make package THEOS_PACKAGE_SCHEME=roothide FINALPACKAGE=1 DISABLE_ROOTLESS_COMPAT_WARNING=1
         env:
           THEOS: ${{ github.workspace }}/theos
 
@@ -93,7 +104,7 @@ jobs:
           DEB=$(ls packages/*.deb | head -1)
           VERSION=$(grep '^Version:' pccontrol/control | awk '{print $2}')
           cp "$DEB" "artifacts/com.zjx.ioscontrol_${VERSION}_roothide.deb"
-          echo "Roothide deb: artifacts/com.zjx.ioscontrol_${VERSION}_roothide.deb"
+          echo "Saved: artifacts/com.zjx.ioscontrol_${VERSION}_roothide.deb"
 
       # ── Upload artifacts ───────────────────────────────────────────────────
       - name: Upload Rootless deb

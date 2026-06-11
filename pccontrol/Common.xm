@@ -44,7 +44,7 @@ Check whether current device is an iPad
 */
 Boolean isIpad()
 {
-    if ( UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad )
+    if ( [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad )
     {
         return YES;
     }

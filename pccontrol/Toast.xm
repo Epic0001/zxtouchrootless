@@ -118,19 +118,25 @@ void showToastFromRawData(UInt8 *eventData, NSError **error)
         }
 
         if (@available(iOS 11.0, *)) {
-            UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
-            CGFloat topPadding = window.safeAreaInsets.top;
-            CGFloat bottomPadding = window.safeAreaInsets.bottom;
-
+            UIWindowScene *scene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+            UIWindow *anyWindow = scene.windows.firstObject;
+            CGFloat bottomPadding = anyWindow ? anyWindow.safeAreaInsets.bottom : 0;
             windowLeftTopCornerY = bottomPadding + windowLeftTopCornerY;
         }
 
 
 
         
-        _window = [[UIWindow alloc] initWithFrame:CGRectMake(windowLeftTopCornerX, windowLeftTopCornerY, windowWidth, windowHeight)];
+        UIWindowScene *toastScene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+        if (toastScene) {
+            _window = [[UIWindow alloc] initWithWindowScene:toastScene];
+            _window.frame = CGRectMake(windowLeftTopCornerX, windowLeftTopCornerY, windowWidth, windowHeight);
+        } else {
+            _window = [[UIWindow alloc] initWithFrame:CGRectMake(windowLeftTopCornerX, windowLeftTopCornerY, windowWidth, windowHeight)];
+        }
+        _window.rootViewController = [[UIViewController alloc] init];
         currentWindow = _window;
-        _window.windowLevel = UIWindowLevelStatusBar;
+        _window.windowLevel = UIWindowLevelStatusBar + 1;
         [_window setBackgroundColor: backgroundColorDict[[@(type) stringValue]]];
 
         _window.layer.borderColor = [UIColor clearColor].CGColor;

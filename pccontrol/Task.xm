@@ -1,5 +1,5 @@
 #include "Task.h"
-#include <rootless.h>
+#include <roothide.h>
 #include "Touch.h"
 #include "ColorPicker.h"
 #include "Process.h"
@@ -106,7 +106,7 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
     else if (taskType == TASK_RUN_SHELL)
     {
         @autoreleasepool{
-            system2([[NSString stringWithFormat:@"%@ -c \"%s\"", ROOT_PATH_NS(@"/bin/sh"), eventData] UTF8String], NULL, NULL);
+            system2([[NSString stringWithFormat:@"%@ -c \"%s\"", jbroot(@"/bin/sh"), eventData] UTF8String], NULL, NULL);
             notifyClient((UInt8*)"0\r\n", writeStreamRef);
         }
     }

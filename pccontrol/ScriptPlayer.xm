@@ -1,5 +1,5 @@
 #import "ScriptPlayer.h"
-#include <rootless.h>
+#include <roothide.h>
 #include "Play.h"
 #include "SocketServer.h"
 #include "Process.h"
@@ -257,7 +257,7 @@ static BOOL isPlaying = false;
     }
     
     // check python exists
-    if (![[NSFileManager defaultManager] fileExistsAtPath:ROOT_PATH_NS(@"/usr/bin/python3")])
+    if (![[NSFileManager defaultManager] fileExistsAtPath:jbroot(@"/usr/bin/python3")])
     {
         showAlertBox(@"Error", @"Cannot play this script. python3 not found. Please install Python 3 on your device.", 999);
         isPlaying = false;
@@ -275,7 +275,7 @@ static BOOL isPlaying = false;
     if (![[NSFileManager defaultManager] fileExistsAtPath:outputLog])
         [@"" writeToFile:outputLog atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-    NSString *commandToRun = [NSString stringWithFormat:@"%@ -u \"%@\" 2>&1 | /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh >> %@", ROOT_PATH_NS(@"/usr/bin/python3"), filePath, outputLog];
+    NSString *commandToRun = [NSString stringWithFormat:@"%@ -u \"%@\" 2>&1 | /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh >> %@", jbroot(@"/usr/bin/python3"), filePath, outputLog];
     NSLog(@"com.zjx.springboard: command to run for running py file %@", commandToRun);
 
     system2([commandToRun UTF8String], NULL, NULL);
@@ -371,7 +371,7 @@ static BOOL isPlaying = false;
     {
         // Kill all python3 processes; SpringBoard runs as root so no sudo needed.
         // system2 blocks but killall returns quickly, so this is fine.
-        system2([ROOT_PATH_NS(@"/usr/bin/killall") stringByAppendingString:@" -9 python3"].UTF8String, NULL, NULL);
+        system2([jbroot(@"/usr/bin/killall") stringByAppendingString:@" -9 python3"].UTF8String, NULL, NULL);
         [self clear];
     }
     else

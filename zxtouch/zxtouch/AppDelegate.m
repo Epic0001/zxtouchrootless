@@ -21,9 +21,7 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
 
-    BOOL darkMode = [[NSUserDefaults standardUserDefaults] boolForKey:@"dark_mode"];
-    UIUserInterfaceStyle style = darkMode ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
-    _window.overrideUserInterfaceStyle = style;
+    // Dark mode is applied in SceneDelegate when the window is ready
     
     return YES;
 }

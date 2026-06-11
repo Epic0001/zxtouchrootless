@@ -8,121 +8,249 @@
 #include "Common.h"
 #import <UIKit/UIKit.h>
 
-#define PANEL_WIDTH  260
-#define PANEL_HEIGHT 340
 #define BTN_H 38
+#define SETTINGS_KEY_REPEAT  @"repeat_times"
+#define SETTINGS_KEY_SPEED   @"speed"
+#define SETTINGS_KEY_INTERVAL @"interval"
+
+static UIButton* makeBtn(NSString *title, UIColor *color) {
+    UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
+    [b setTitle:title forState:UIControlStateNormal];
+    b.titleLabel.font = [UIFont systemFontOfSize:14];
+    b.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+    b.layer.cornerRadius = 8;
+    b.layer.borderColor = color.CGColor;
+    b.layer.borderWidth = 1;
+    [b setTitleColor:color forState:UIControlStateNormal];
+    return b;
+}
+
+static UIView* makeSep() {
+    UIView *s = [[UIView alloc] init];
+    s.backgroundColor = [UIColor colorWithWhite:0.85 alpha:1.0];
+    return s;
+}
 
 @implementation PopupWindow
 {
-    UIWindow *_window;
-    UIScrollView *_scriptScrollView;
-    BOOL isShown;
+    UIWindow       *_window;
+    UIScrollView   *_scriptScrollView;
+    UIView         *_settingsView;
+    UILabel        *_repeatLabel;
+    UILabel        *_speedLabel;
+    int             _repeatCount;
+    float           _speed;
+    BOOL            _settingsVisible;
+    BOOL            isShown;
 }
 
-- (id) init
-{
+- (id) init {
     self = [super init];
-    if (self)
-    {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            UIWindowScene *scene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
-            CGRect screenBounds = [UIScreen mainScreen].bounds;
-            CGFloat cx = CGRectGetMidX(screenBounds) - PANEL_WIDTH / 2.0;
-            CGFloat cy = CGRectGetMidY(screenBounds) - PANEL_HEIGHT / 2.0;
-
-            if (scene) {
-                _window = [[UIWindow alloc] initWithWindowScene:scene];
-                _window.frame = CGRectMake(cx, cy, PANEL_WIDTH, PANEL_HEIGHT);
-            } else {
-                _window = [[UIWindow alloc] initWithFrame:CGRectMake(cx, cy, PANEL_WIDTH, PANEL_HEIGHT)];
-            }
-            _window.windowLevel = UIWindowLevelAlert + 1;
-
-            UIViewController *rootVC = [[UIViewController alloc] init];
-            rootVC.view.backgroundColor = [UIColor colorWithWhite:0.97 alpha:1.0];
-            rootVC.view.layer.cornerRadius = 16.0f;
-            rootVC.view.layer.borderColor = [UIColor colorWithWhite:0.8 alpha:1.0].CGColor;
-            rootVC.view.layer.borderWidth = 1.0f;
-            rootVC.view.clipsToBounds = YES;
-            _window.rootViewController = rootVC;
-            UIView *cv = rootVC.view;
-
-            // Header
-            UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(12, 10, PANEL_WIDTH - 50, 28)];
-            title.text = @"ZXTouch";
-            title.font = [UIFont boldSystemFontOfSize:18];
-            title.textColor = [UIColor blackColor];
-            [cv addSubview:title];
-
-            // Close button
-            UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-            [closeBtn setTitle:@"✕" forState:UIControlStateNormal];
-            [closeBtn addTarget:self action:@selector(hide) forControlEvents:UIControlEventTouchUpInside];
-            closeBtn.frame = CGRectMake(PANEL_WIDTH - 42, 6, 36, 36);
-            closeBtn.titleLabel.font = [UIFont systemFontOfSize:18];
-            [cv addSubview:closeBtn];
-
-            // Separator
-            UIView *sep1 = [[UIView alloc] initWithFrame:CGRectMake(0, 46, PANEL_WIDTH, 1)];
-            sep1.backgroundColor = [UIColor colorWithWhite:0.85 alpha:1.0];
-            [cv addSubview:sep1];
-
-            // REC button
-            UIButton *recBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-            [recBtn setTitle:@"⏺  REC" forState:UIControlStateNormal];
-            [recBtn setTitleColor:[UIColor systemRedColor] forState:UIControlStateNormal];
-            recBtn.titleLabel.font = [UIFont systemFontOfSize:15];
-            recBtn.frame = CGRectMake(8, 54, (PANEL_WIDTH - 24) / 2, BTN_H);
-            recBtn.backgroundColor = [UIColor colorWithRed:1 green:0.93 blue:0.93 alpha:1];
-            recBtn.layer.cornerRadius = 8;
-            recBtn.layer.borderColor = [UIColor systemRedColor].CGColor;
-            recBtn.layer.borderWidth = 1;
-            [recBtn addTarget:self action:@selector(recordingStart) forControlEvents:UIControlEventTouchUpInside];
-            [cv addSubview:recBtn];
-
-            // STOP button
-            UIButton *stopBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-            [stopBtn setTitle:@"⏹  STOP" forState:UIControlStateNormal];
-            [stopBtn setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
-            stopBtn.titleLabel.font = [UIFont systemFontOfSize:15];
-            stopBtn.frame = CGRectMake(PANEL_WIDTH / 2 + 4, 54, (PANEL_WIDTH - 24) / 2, BTN_H);
-            stopBtn.backgroundColor = [UIColor colorWithWhite:0.92 alpha:1.0];
-            stopBtn.layer.cornerRadius = 8;
-            [stopBtn addTarget:self action:@selector(stopPlaying) forControlEvents:UIControlEventTouchUpInside];
-            [cv addSubview:stopBtn];
-
-            // Separator
-            UIView *sep2 = [[UIView alloc] initWithFrame:CGRectMake(0, 54 + BTN_H + 8, PANEL_WIDTH, 1)];
-            sep2.backgroundColor = [UIColor colorWithWhite:0.85 alpha:1.0];
-            [cv addSubview:sep2];
-
-            // Scripts label
-            UILabel *scriptsLabel = [[UILabel alloc] initWithFrame:CGRectMake(12, 54 + BTN_H + 14, PANEL_WIDTH - 20, 20)];
-            scriptsLabel.text = @"Scripts";
-            scriptsLabel.font = [UIFont boldSystemFontOfSize:13];
-            scriptsLabel.textColor = [UIColor grayColor];
-            [cv addSubview:scriptsLabel];
-
-            // Script scroll view
-            CGFloat scrollTop = 54 + BTN_H + 38;
-            _scriptScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0, scrollTop, PANEL_WIDTH, PANEL_HEIGHT - scrollTop - 8)];
-            _scriptScrollView.backgroundColor = [UIColor clearColor];
-            [cv addSubview:_scriptScrollView];
-        });
+    if (self) {
+        _repeatCount = 0;
+        _speed = 1.0f;
+        _settingsVisible = NO;
         isShown = NO;
+        [self buildWindow];
     }
     return self;
 }
 
+- (void) buildWindow {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        CGRect sb = [UIScreen mainScreen].bounds;
+        CGFloat pw = MIN(sb.size.width, sb.size.height) * 0.75f;
+        pw = MAX(pw, 240); pw = MIN(pw, 360);
+        CGFloat ph = sb.size.height * 0.65f;
+        ph = MAX(ph, 300); ph = MIN(ph, 480);
+        CGFloat cx = CGRectGetMidX(sb) - pw/2;
+        CGFloat cy = CGRectGetMidY(sb) - ph/2;
+
+        UIWindowScene *scene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+        if (scene) {
+            _window = [[UIWindow alloc] initWithWindowScene:scene];
+            _window.frame = CGRectMake(cx, cy, pw, ph);
+        } else {
+            _window = [[UIWindow alloc] initWithFrame:CGRectMake(cx, cy, pw, ph)];
+        }
+        _window.windowLevel = UIWindowLevelAlert + 1;
+
+        UIViewController *rvc = [[UIViewController alloc] init];
+        rvc.view.backgroundColor = [UIColor colorWithWhite:0.97 alpha:1.0];
+        rvc.view.layer.cornerRadius = 16;
+        rvc.view.layer.borderColor = [UIColor colorWithWhite:0.8 alpha:1.0].CGColor;
+        rvc.view.layer.borderWidth = 1;
+        rvc.view.clipsToBounds = YES;
+        _window.rootViewController = rvc;
+        UIView *cv = rvc.view;
+
+        // Header
+        UILabel *ttl = [[UILabel alloc] initWithFrame:CGRectMake(12,10,pw-100,28)];
+        ttl.text = @"ZXTouch"; ttl.font = [UIFont boldSystemFontOfSize:17];
+        ttl.textColor = [UIColor blackColor]; [cv addSubview:ttl];
+
+        // Settings gear button
+        UIButton *gearBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        [gearBtn setTitle:@"⚙️" forState:UIControlStateNormal];
+        gearBtn.frame = CGRectMake(pw-80, 6, 36, 36);
+        [gearBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+            [self toggleSettings];
+        }] forControlEvents:UIControlEventTouchUpInside];
+        [cv addSubview:gearBtn];
+
+        // Close button
+        UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        [closeBtn setTitle:@"✕" forState:UIControlStateNormal];
+        closeBtn.frame = CGRectMake(pw-42, 6, 36, 36);
+        closeBtn.titleLabel.font = [UIFont systemFontOfSize:17];
+        [closeBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+            [self hide];
+        }] forControlEvents:UIControlEventTouchUpInside];
+        [cv addSubview:closeBtn];
+
+        [cv addSubview:[self makeSepAt:CGRectMake(0,46,pw,1)]];
+
+        // REC / STOP buttons
+        CGFloat btnW = (pw - 24) / 2;
+        UIButton *recBtn = makeBtn(@"⏺  REC", [UIColor systemRedColor]);
+        recBtn.frame = CGRectMake(8, 54, btnW, BTN_H);
+        recBtn.backgroundColor = [UIColor colorWithRed:1 green:0.93 blue:0.93 alpha:1];
+        [recBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+            [self recordingStart];
+        }] forControlEvents:UIControlEventTouchUpInside];
+        [cv addSubview:recBtn];
+
+        UIButton *stopBtn = makeBtn(@"⏹  STOP", [UIColor darkGrayColor]);
+        stopBtn.frame = CGRectMake(pw/2+4, 54, btnW, BTN_H);
+        [stopBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+            [self stopPlaying];
+        }] forControlEvents:UIControlEventTouchUpInside];
+        [cv addSubview:stopBtn];
+
+        // Settings view (hidden initially)
+        _settingsView = [[UIView alloc] initWithFrame:CGRectMake(0, 54+BTN_H+4, pw, 0)];
+        _settingsView.backgroundColor = [UIColor colorWithWhite:0.93 alpha:1.0];
+        _settingsView.clipsToBounds = YES;
+        [cv addSubview:_settingsView];
+        [self buildSettingsInView:_settingsView width:pw];
+
+        [cv addSubview:[self makeSepAt:CGRectMake(0, 54+BTN_H+8, pw, 1)]];
+
+        // Scripts label
+        UILabel *sl = [[UILabel alloc] initWithFrame:CGRectMake(12, 54+BTN_H+14, pw-20, 18)];
+        sl.text = @"Scripts"; sl.font = [UIFont boldSystemFontOfSize:12];
+        sl.textColor = [UIColor grayColor]; [cv addSubview:sl];
+
+        // Script scroll view
+        CGFloat scrollTop = 54+BTN_H+36;
+        _scriptScrollView = [[UIScrollView alloc] initWithFrame:CGRectMake(0,scrollTop,pw,ph-scrollTop-8)];
+        _scriptScrollView.backgroundColor = [UIColor clearColor];
+        [cv addSubview:_scriptScrollView];
+
+        // Store dynamic refs
+        _window.tag = 999;
+    });
+}
+
+- (UIView*) makeSepAt:(CGRect)r {
+    UIView *s = [[UIView alloc] initWithFrame:r];
+    s.backgroundColor = [UIColor colorWithWhite:0.85 alpha:1.0];
+    return s;
+}
+
+- (void) buildSettingsInView:(UIView*)sv width:(CGFloat)pw {
+    CGFloat y = 8;
+
+    // Repeat
+    UILabel *rl = [[UILabel alloc] initWithFrame:CGRectMake(12,y,80,22)];
+    rl.text = @"Repeat:"; rl.font = [UIFont systemFontOfSize:13]; rl.textColor = [UIColor darkGrayColor];
+    [sv addSubview:rl];
+
+    UIButton *rMinus = makeBtn(@"−", [UIColor systemBlueColor]);
+    rMinus.frame = CGRectMake(pw-130, y, 36, 28);
+    [rMinus addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+        if (_repeatCount > 0) { _repeatCount--; [self updateSettingsLabels]; }
+    }] forControlEvents:UIControlEventTouchUpInside];
+    [sv addSubview:rMinus];
+
+    _repeatLabel = [[UILabel alloc] initWithFrame:CGRectMake(pw-90,y,40,28)];
+    _repeatLabel.textAlignment = NSTextAlignmentCenter;
+    _repeatLabel.font = [UIFont systemFontOfSize:14];
+    [sv addSubview:_repeatLabel];
+
+    UIButton *rPlus = makeBtn(@"+", [UIColor systemBlueColor]);
+    rPlus.frame = CGRectMake(pw-48, y, 36, 28);
+    [rPlus addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+        _repeatCount++; [self updateSettingsLabels];
+    }] forControlEvents:UIControlEventTouchUpInside];
+    [sv addSubview:rPlus];
+    y += 36;
+
+    // Speed
+    UILabel *spl = [[UILabel alloc] initWithFrame:CGRectMake(12,y,60,22)];
+    spl.text = @"Speed:"; spl.font = [UIFont systemFontOfSize:13]; spl.textColor = [UIColor darkGrayColor];
+    [sv addSubview:spl];
+
+    NSArray *speeds = @[@(0.5f), @(1.0f), @(1.5f), @(2.0f)];
+    NSArray *labels = @[@"0.5×", @"1×", @"1.5×", @"2×"];
+    CGFloat sbtnW = (pw - 80) / 4.0f;
+    for (int i = 0; i < 4; i++) {
+        float spd = [speeds[i] floatValue];
+        UIButton *sb = makeBtn(labels[i], [UIColor systemBlueColor]);
+        sb.frame = CGRectMake(70 + i*sbtnW, y, sbtnW - 4, 28);
+        [sb addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+            _speed = spd; [self updateSettingsLabels];
+        }] forControlEvents:UIControlEventTouchUpInside];
+        [sv addSubview:sb];
+    }
+    _speedLabel = [[UILabel alloc] initWithFrame:CGRectMake(12,y+2,60,18)];
+    _speedLabel.font = [UIFont systemFontOfSize:11]; _speedLabel.textColor = [UIColor grayColor];
+    [sv addSubview:_speedLabel];
+
+    [self updateSettingsLabels];
+}
+
+- (void) updateSettingsLabels {
+    _repeatLabel.text = _repeatCount == 0 ? @"1×" : [NSString stringWithFormat:@"%d×", _repeatCount+1];
+    _speedLabel.text = [NSString stringWithFormat:@"%.1f×", _speed];
+}
+
+- (void) toggleSettings {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        _settingsVisible = !_settingsVisible;
+        CGFloat newH = _settingsVisible ? 80 : 0;
+        [UIView animateWithDuration:0.2 animations:^{
+            CGRect f = _settingsView.frame;
+            f.size.height = newH;
+            _settingsView.frame = f;
+        }];
+    });
+}
+
+- (void) repositionWindow {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        CGRect sb = [UIScreen mainScreen].bounds;
+        CGFloat pw = MIN(sb.size.width, sb.size.height) * 0.75f;
+        pw = MAX(pw, 240); pw = MIN(pw, 360);
+        CGFloat ph = sb.size.height * 0.65f;
+        ph = MAX(ph, 300); ph = MIN(ph, 480);
+        CGFloat cx = CGRectGetMidX(sb) - pw/2;
+        CGFloat cy = CGRectGetMidY(sb) - ph/2;
+        _window.frame = CGRectMake(cx, cy, pw, ph);
+    });
+}
+
 - (void) populateScrollView:(NSArray<NSDictionary*>*)items {
     for (UIView *v in _scriptScrollView.subviews) [v removeFromSuperview];
+    CGFloat pw = _window.frame.size.width;
+    if (pw < 10) pw = 260;
     CGFloat y = 4;
     for (NSDictionary *item in items) {
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
         [btn setTitle:item[@"label"] forState:UIControlStateNormal];
-        btn.titleLabel.font = [UIFont systemFontOfSize:14];
+        btn.titleLabel.font = [UIFont systemFontOfSize:13];
         btn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-        btn.frame = CGRectMake(8, y, PANEL_WIDTH - 16, BTN_H);
+        btn.frame = CGRectMake(8, y, pw - 16, BTN_H);
         btn.backgroundColor = [UIColor whiteColor];
         btn.layer.cornerRadius = 8;
         btn.layer.borderColor = [UIColor colorWithWhite:0.88 alpha:1.0].CGColor;
@@ -130,9 +258,9 @@
         NSString *action = item[@"action"];
         if ([action isEqualToString:@"folder"]) {
             [btn setTitleColor:[UIColor systemBlueColor] forState:UIControlStateNormal];
-            NSString *folderPath = item[@"path"];
+            NSString *fp = item[@"path"], *fn = item[@"folderName"];
             [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
-                [self showFolder:folderPath name:item[@"folderName"]];
+                [self showFolder:fp name:fn];
             }] forControlEvents:UIControlEventTouchUpInside];
         } else if ([action isEqualToString:@"back"]) {
             [btn setTitleColor:[UIColor systemOrangeColor] forState:UIControlStateNormal];
@@ -141,8 +269,10 @@
             }] forControlEvents:UIControlEventTouchUpInside];
         } else {
             NSString *fullPath = item[@"path"];
+            int rep = _repeatCount; float spd = _speed;
             [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
                 [self hide];
+                [self saveSettings:rep speed:spd];
                 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                     NSError *err = nil;
                     playScript((UInt8*)[fullPath UTF8String], &err);
@@ -153,8 +283,18 @@
         [_scriptScrollView addSubview:btn];
         y += BTN_H + 6;
     }
-    _scriptScrollView.contentSize = CGSizeMake(PANEL_WIDTH, y + 4);
+    _scriptScrollView.contentSize = CGSizeMake(pw, y + 4);
     [_scriptScrollView setContentOffset:CGPointZero animated:NO];
+}
+
+- (void) saveSettings:(int)repeat speed:(float)speed {
+    NSMutableDictionary *config = [NSMutableDictionary dictionary];
+    config[@"scriptPlaybackInfo"] = @{
+        SETTINGS_KEY_REPEAT: @(repeat),
+        SETTINGS_KEY_SPEED: @(speed),
+        SETTINGS_KEY_INTERVAL: @(0)
+    };
+    [config writeToFile:SCRIPT_PLAY_CONFIG_PATH atomically:YES];
 }
 
 - (void) showFolder:(NSString*)folderPath name:(NSString*)name {
@@ -166,8 +306,7 @@
     for (NSString *n in contents) {
         if (![n hasSuffix:@".bdl"]) continue;
         NSString *path = [folderPath stringByAppendingPathComponent:n];
-        NSString *label = [n substringToIndex:n.length - 4];
-        [items addObject:@{@"label": label, @"path": path, @"action": @"play"}];
+        [items addObject:@{@"label": [n substringToIndex:n.length-4], @"path": path, @"action": @"play"}];
     }
     dispatch_async(dispatch_get_main_queue(), ^{ [self populateScrollView:items]; });
 }
@@ -180,13 +319,10 @@
     NSMutableArray *items = [NSMutableArray array];
     for (NSString *name in top) {
         NSString *path = [base stringByAppendingPathComponent:name];
-        BOOL isDir = NO;
-        [fm fileExistsAtPath:path isDirectory:&isDir];
+        BOOL isDir = NO; [fm fileExistsAtPath:path isDirectory:&isDir];
         if ([name hasSuffix:@".bdl"]) {
-            // .bdl is a script bundle — show as single tappable script
             [items addObject:@{@"label": [name substringToIndex:name.length-4], @"path": path, @"action": @"play"}];
         } else if (isDir) {
-            // subfolder (e.g. "recording") — show as folder entry
             [items addObject:@{@"label": [NSString stringWithFormat:@"📁 %@", name], @"path": path, @"folderName": name, @"action": @"folder"}];
         }
     }
@@ -198,8 +334,7 @@
         [self hide];
         NSError *err = nil;
         startRecording(0, &err);
-        if (err)
-            showAlertBox(@"Error", [NSString stringWithFormat:@"Unable to start recording: %@", [err localizedDescription]], 999);
+        if (err) showAlertBox(@"Error", [NSString stringWithFormat:@"Unable to start recording: %@", [err localizedDescription]], 999);
     });
 }
 
@@ -207,15 +342,14 @@
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
         NSError *err = nil;
         stopScriptPlaying(&err);
-        if (err)
-            showAlertBox(@"Error", [NSString stringWithFormat:@"Stop error: %@", err], 999);
-        else
-            [Toast showToastWithContent:@"Script stopped" type:4 duration:1.0f position:0 fontSize:0];
+        if (err) showAlertBox(@"Error", [NSString stringWithFormat:@"Stop error: %@", err], 999);
+        else showAlertBox(@"ZXTouch", @"Script stopped.", 1);
     });
 }
 
 - (void) show {
     [self refreshScriptList];
+    [self repositionWindow];
     dispatch_async(dispatch_get_main_queue(), ^{
         _window.hidden = NO;
     });
@@ -229,7 +363,6 @@
     isShown = NO;
 }
 
-- (BOOL) isShown {
-    return isShown;
-}
+- (BOOL) isShown { return isShown; }
+
 @end

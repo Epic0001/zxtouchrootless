@@ -27,9 +27,17 @@ fi
 
 chown -R mobile:mobile /var/mobile/Library/ZXTouch
 
-# python3 lands at /var/jb/bin/python3 but ScriptPlayer looks at /var/jb/usr/bin/python3
+# Use system Python3 if available (from Procursus), fallback to bundled
 mkdir -p /var/jb/usr/bin
-ln -sf /var/jb/bin/python3 /var/jb/usr/bin/python3 2>/dev/null || true
+if [ -x /var/jb/usr/bin/python3 ] && /var/jb/usr/bin/python3 -c "print(1)" > /dev/null 2>&1; then
+    echo "Using system python3"
+elif [ -x /var/jb/usr/bin/python3.10 ]; then
+    ln -sf /var/jb/usr/bin/python3.10 /var/jb/usr/bin/python3 2>/dev/null || true
+elif [ -x /var/jb/usr/bin/python3.11 ]; then
+    ln -sf /var/jb/usr/bin/python3.11 /var/jb/usr/bin/python3 2>/dev/null || true
+else
+    ln -sf /var/jb/bin/python3 /var/jb/usr/bin/python3 2>/dev/null || true
+fi
 
 # Strip expired dev provisioning profile and re-sign with ldid
 APP=/var/jb/Applications/zxtouch.app

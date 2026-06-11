@@ -73,3 +73,8 @@ BOOL isScriptPlaying()
 {
     return scriptPlayer && [scriptPlayer isPlaying];
 }
+
+void playHasStoppedCallBack()
+{
+    showAlertBox(@"ZXTouch", @"Script finished.", 1);
+}

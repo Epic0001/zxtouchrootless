@@ -15,7 +15,7 @@ if [ -d "$SUDOERS_D" ]; then
 fi
 
 # Create required app directories
-mkdir -p /var/mobile/Library/ZXTouch/scripts/
+mkdir -p /var/mobile/Library/ZXTouch/scripts/recording/
 mkdir -p /var/mobile/Library/ZXTouch/config/tweak/
 mkdir -p /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/
 

@@ -1,10 +1,15 @@
 #include "Screen.h"
 #include "Common.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wavailability"
+#pragma clang diagnostic ignored "-Wattributes"
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #include "headers/IOSurface/IOSurfaceAccelerator.h"
 #include "headers/IOSurface/IOMobileFramebuffer.h"
 #import "headers/IOSurface/IOSurface.h"
 #include "headers/IOSurface/CoreSurface.h"
+#pragma clang diagnostic pop
 
 OBJC_EXTERN void CARenderServerRenderDisplay(kern_return_t a, CFStringRef b, IOSurfaceRef surface, int x, int y);
 OBJC_EXTERN kern_return_t IOSurfaceLock(IOSurfaceRef buffer, IOSurfaceLockOptions options, uint32_t *seed);

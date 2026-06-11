@@ -7,11 +7,15 @@
 #import "TouchIndicatorView.h"
 #import "TouchIndicatorCoordinateView.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wavailability"
+#pragma clang diagnostic ignored "-Wattributes"
 #include "../headers/IOHIDEvent.h"
 #include "../headers/IOHIDEventData.h"
 #include "../headers/IOHIDEventTypes.h"
 #include "../headers/IOHIDEventSystemClient.h"
 #include "../headers/IOHIDEventSystem.h"
+#pragma clang diagnostic pop
 #import <mach/mach.h>
 
 #define HIDE 0
@@ -244,21 +248,16 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 
             IOHIDFloat majorRadius = IOHIDEventGetFloatValue(event, 0xb0014);
 
-            // IOHIDEvent coords are normalized in portrait physical space (0.0-1.0)
-            // Convert to portrait points, then to current orientation UIKit points
-            CGFloat portraitX = x * (screenBoundsWidth / scale);
-            CGFloat portraitY = y * (screenBoundsHeight / scale);
-            CGPoint portraitPoint = CGPointMake(portraitX, portraitY);
-            CGPoint uiPoint = [[UIScreen mainScreen].fixedCoordinateSpace
-                convertPoint:portraitPoint
-                toCoordinateSpace:[UIScreen mainScreen].coordinateSpace];
+            // IOHIDEvent normalized coords (0.0-1.0) are already orientation-aware
+            // Simply multiply by current UIKit bounds to get screen-space points
+            CGRect currentBounds = [UIScreen mainScreen].bounds;
+            CGFloat xOnScreen = x * currentBounds.size.width;
+            CGFloat yOnScreen = y * currentBounds.size.height;
 
             if ( touch == 1 && eventMask & 2 )
-                // touch down
-                [touchIndicatorWindow showIndicator:index withX:uiPoint.x andY:uiPoint.y majorRadius:majorRadius];
+                [touchIndicatorWindow showIndicator:index withX:xOnScreen andY:yOnScreen majorRadius:majorRadius];
             else if ( touch == 1 && eventMask & 4 )
-                // touch move
-                [touchIndicatorWindow moveIndicator:index x:uiPoint.x y:uiPoint.y majorRadius:majorRadius];
+                [touchIndicatorWindow moveIndicator:index x:xOnScreen y:yOnScreen majorRadius:majorRadius];
 
             else if (!touch && (eventMask & 2) )
                 // touch up
@@ -377,14 +376,9 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 
 - (void) show {
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Cover full screen in any orientation
         _window.frame = [UIScreen mainScreen].bounds;
+        _window.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         _window.hidden = NO;
-        // Update frame on rotation
-        [[NSNotificationCenter defaultCenter] addObserverForName:UIDeviceOrientationDidChangeNotification
-            object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *n) {
-                _window.frame = [UIScreen mainScreen].bounds;
-            }];
     });
 }
 

@@ -40,8 +40,15 @@ fi
 
 # Install zxtouch Python module into active Python3 site-packages
 PYTHON3=$(jbroot /usr/bin/python3)
+# Fix broken python3 symlink — Procursus points it to /bin/python3 which doesn't resolve on roothide
 if [ ! -x "$PYTHON3" ]; then
-    ln -sf "$(jbroot /bin/python3)" "$PYTHON3" 2>/dev/null || true
+    for VER in python3.11 python3.10 python3.9 python3.8; do
+        PYVER=$(jbroot /usr/bin/$VER)
+        if [ -x "$PYVER" ]; then
+            ln -sf "$PYVER" "$PYTHON3"
+            break
+        fi
+    done
 fi
 if [ -x "$PYTHON3" ]; then
     SITE_PKGS=$(jbroot /usr/lib/python3.7/site-packages)

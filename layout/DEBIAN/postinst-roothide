@@ -38,9 +38,8 @@ if [ -f "$SCRIPT" ]; then
     chmod +x "$SCRIPT"
 fi
 
-# Install zxtouch Python module into active Python3 site-packages
-PYTHON3=$(jbroot /usr/bin/python3)
 # Fix broken python3 symlink — Procursus points it to /bin/python3 which doesn't resolve on roothide
+PYTHON3=$(jbroot /usr/bin/python3)
 if [ ! -x "$PYTHON3" ]; then
     for VER in python3.11 python3.10 python3.9 python3.8; do
         PYVER=$(jbroot /usr/bin/$VER)
@@ -50,14 +49,14 @@ if [ ! -x "$PYTHON3" ]; then
         fi
     done
 fi
-if [ -x "$PYTHON3" ]; then
-    SITE_PKGS=$(jbroot /usr/lib/python3.7/site-packages)
-    for SP in $("$PYTHON3" -c "import site; print(' '.join(site.getsitepackages()))" 2>/dev/null); do
-        if [ -d "$SP" ]; then
-            cp -rn "$SITE_PKGS/zxtouch" "$SP/" 2>/dev/null || true
-        fi
-    done
-fi
+
+# Install zxtouch Python module into all known site-packages locations
+SITE_BASE=$(jbroot /usr/lib)
+for SP in "$SITE_BASE"/python3*/site-packages; do
+    if [ -d "$SP" ] && [ "$SP" != "$(jbroot /usr/lib/python3.7/site-packages)" ]; then
+        cp -rn "$(jbroot /usr/lib/python3.7/site-packages)/zxtouch" "$SP/" 2>/dev/null || true
+    fi
+done
 
 # Re-sign app with roothide entitlements
 APP=$(jbroot /Applications/zxtouch.app)

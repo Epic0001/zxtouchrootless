@@ -27,20 +27,12 @@ fi
 
 chown -R mobile:mobile /var/mobile/Library/ZXTouch
 
-# Install zxtouch Python module into the active Python3 site-packages
-mkdir -p /var/jb/usr/bin
-PYTHON3=/var/jb/usr/bin/python3
-if [ ! -x "$PYTHON3" ]; then
-    ln -sf /var/jb/bin/python3 "$PYTHON3" 2>/dev/null || true
-fi
-if [ -x "$PYTHON3" ]; then
-    # Copy zxtouch module to every known site-packages location
-    for SP in $($PYTHON3 -c "import site; print(' '.join(site.getsitepackages()))" 2>/dev/null); do
-        if [ -d "$SP" ]; then
-            cp -rn /var/jb/usr/lib/python3.7/site-packages/zxtouch "$SP/" 2>/dev/null || true
-        fi
-    done
-fi
+# Install zxtouch Python module into all known site-packages locations
+for SP in /var/jb/usr/lib/python3*/site-packages; do
+    if [ -d "$SP" ] && [ "$SP" != "/var/jb/usr/lib/python3.7/site-packages" ]; then
+        cp -rn /var/jb/usr/lib/python3.7/site-packages/zxtouch "$SP/" 2>/dev/null || true
+    fi
+done
 
 # Strip expired dev provisioning profile and re-sign with ldid
 APP=/var/jb/Applications/zxtouch.app

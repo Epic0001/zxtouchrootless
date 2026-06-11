@@ -28,6 +28,7 @@
 
 static Boolean isShowing = false;
 static Boolean showCoordinates = true;
+static UIInterfaceOrientation cachedOrientation = UIInterfaceOrientationPortrait;
 
 static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHIDServiceRef service, IOHIDEventRef parentEvent);
 
@@ -121,6 +122,8 @@ void handleTouchIndicatorTaskWithRawData(UInt8* eventData, NSError **error)
 void stopTouchIndicator(NSError **error)
 {
     NSLog(@"com.zjx.springboard: Touch indicator turn off request");
+    [[NSNotificationCenter defaultCenter] removeObserver:[NSNotificationCenter defaultCenter]
+        name:UIDeviceOrientationDidChangeNotification object:nil];
     // set touch indicator window to nil
     touchIndicatorWindow = nil;
     // unregister callback
@@ -203,11 +206,26 @@ void startTouchIndicator(NSError **error)
             return;
         }
 
+        // Cache current orientation once at startup on the main queue
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            UIWindowScene *sc = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+            if (sc && sc.interfaceOrientation != UIInterfaceOrientationUnknown)
+                cachedOrientation = sc.interfaceOrientation;
+            else
+                cachedOrientation = UIInterfaceOrientationPortrait;
+            // Stay updated on rotations
+            [[NSNotificationCenter defaultCenter] addObserverForName:UIDeviceOrientationDidChangeNotification
+                object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *n) {
+                    UIWindowScene *s = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+                    if (s && s.interfaceOrientation != UIInterfaceOrientationUnknown)
+                        cachedOrientation = s.interfaceOrientation;
+                }];
+        });
+
         // init a touch indicator window
-        
         touchIndicatorWindow = [[TouchIndicatorWindow alloc] init];
         [touchIndicatorWindow show];
-        
+
         // create callback
         ioHIDEventSystemClient = IOHIDEventSystemClientCreate(kCFAllocatorDefault);
         
@@ -259,9 +277,7 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
             CGFloat W = b.size.width, H = b.size.height;
             CGFloat xOnScreen, yOnScreen;
 
-            UIInterfaceOrientation ori = UIInterfaceOrientationUnknown;
-            UIWindowScene *sc = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
-            if (sc) ori = sc.interfaceOrientation;
+            UIInterfaceOrientation ori = cachedOrientation;
 
             switch (ori) {
                 case UIInterfaceOrientationLandscapeLeft:

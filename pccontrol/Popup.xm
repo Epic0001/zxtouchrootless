@@ -122,7 +122,7 @@ static UIView* makeSep() {
         CGFloat btnW = (pw - 24) / 2;
         UIButton *recBtn = makeBtn(@"⏺  REC", [UIColor systemRedColor]);
         recBtn.frame = CGRectMake(8, 54, btnW, BTN_H);
-        recBtn.backgroundColor = [UIColor colorWithRed:1 green:0.93 blue:0.93 alpha:1];
+        recBtn.backgroundColor = [UIColor.systemRedColor colorWithAlphaComponent:0.12];
         [recBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
             [self recordingStart];
         }] forControlEvents:UIControlEventTouchUpInside];
@@ -204,9 +204,9 @@ void applyPanelDarkMode(BOOL dark) {
         btn.titleLabel.font = [UIFont systemFontOfSize:13];
         btn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
         btn.frame = CGRectMake(8, y, pw - 16, BTN_H);
-        btn.backgroundColor = [UIColor whiteColor];
+        btn.backgroundColor = [UIColor secondarySystemBackgroundColor];
         btn.layer.cornerRadius = 8;
-        btn.layer.borderColor = [UIColor colorWithWhite:0.88 alpha:1.0].CGColor;
+        btn.layer.borderColor = [UIColor separatorColor].CGColor;
         btn.layer.borderWidth = 1;
         NSString *action = item[@"action"];
         if ([action isEqualToString:@"folder"]) {

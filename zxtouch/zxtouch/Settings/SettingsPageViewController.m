@@ -87,7 +87,7 @@
     UINib *entryCellNib = [UINib nibWithNibName:@"TableViewCellWithEntry" bundle:nil];
     [_tableView registerNib:entryCellNib forCellReuseIdentifier:@"EntryCell"];
     
-    _tableView.backgroundColor = [UIColor colorWithRed:243/255.0f green:242/255.0f blue:248/255.0f alpha:1.0f];
+    _tableView.backgroundColor = [UIColor systemGroupedBackgroundColor];
     _tableView.tableFooterView = [[UIView alloc] init];
 }
 
@@ -278,7 +278,7 @@
     UILabel *title = [[UILabel alloc] init];
     title.translatesAutoresizingMaskIntoConstraints = NO;
     title.font = [UIFont boldSystemFontOfSize:13];
-    title.textColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0.7];
+    title.textColor = [UIColor secondaryLabelColor];
 
     title.text = sections[section];
 

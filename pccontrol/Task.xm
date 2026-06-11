@@ -1,6 +1,7 @@
 #include "Task.h"
 #include <rootless.h>
 #include "Touch.h"
+#include "ColorPicker.h"
 #include "Process.h"
 #include "AlertBox.h"
 #include "Record.h"
@@ -182,7 +183,19 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
     }
     else if (taskType == TASK_COLOR_PICKER)
     {
-        notifyClient((UInt8*)"-1;;color picker disabled in rootless build (opencv2 unavailable)\r\n", writeStreamRef);
+        @autoreleasepool {
+            NSError *err = nil;
+            NSDictionary *result = getRGBFromRawData(eventData, &err);
+            if (err)
+            {
+                notifyClient((UInt8*)[[err localizedDescription] UTF8String], writeStreamRef);
+            }
+            else
+            {
+                notifyClient((UInt8*)[[NSString stringWithFormat:@"0;;%@;;%@;;%@\r\n",
+                    result[@"red"], result[@"green"], result[@"blue"]] UTF8String], writeStreamRef);
+            }
+        }
     }
     else if (taskType == TASK_TEXT_INPUT)
     {
@@ -246,7 +259,18 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
     }
     else if (taskType == TASK_COLOR_SEARCHER)
     {
-        notifyClient((UInt8*)"-1;;color searcher disabled in rootless build (opencv2 unavailable)\r\n", writeStreamRef);
+        @autoreleasepool {
+            NSError *err = nil;
+            NSString *result = searchRGBFromRawData(eventData, &err);
+            if (err)
+            {
+                notifyClient((UInt8*)[[err localizedDescription] UTF8String], writeStreamRef);
+            }
+            else
+            {
+                notifyClient((UInt8*)[[NSString stringWithFormat:@"0;;%@\r\n", result] UTF8String], writeStreamRef);
+            }
+        }
     }
     else if (taskType == TASK_UPDATE_CACHE)
     {

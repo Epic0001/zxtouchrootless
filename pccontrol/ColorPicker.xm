@@ -1,17 +1,9 @@
 #include "ColorPicker.h"
 #include "Screen.h"
-#include "Image.h"
-#import <opencv2/imgcodecs/ios.h>
+#import <CoreGraphics/CoreGraphics.h>
 #import <mach/mach.h>
 
-
 #define COLOR_SEARCHER_SEARCH_SINGLE_POINT 1
-
-void report_memory(void);
-
-
-using namespace cv;
-using namespace std;
 
 NSDictionary* getRGBFromRawData(UInt8 *eventData, NSError **error)
 {

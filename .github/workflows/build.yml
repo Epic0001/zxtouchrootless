@@ -1,11 +1,15 @@
-name: Build Rootless Package
+name: Build ZXTouch Package
 
 on:
   push:
     branches: [ master, main, ios16-rootless ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ master, main ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -59,14 +63,72 @@ jobs:
         with:
           cache: true
 
-      - name: Build .deb
+      # ── Rootless (Dopamine) build ──────────────────────────────────────────
+      - name: Build Rootless .deb
         run: make package THEOS_PACKAGE_SCHEME=rootless FINALPACKAGE=1
         env:
           THEOS: ${{ github.workspace }}/theos
 
-      - name: Upload .deb
+      - name: Save Rootless .deb
+        run: |
+          mkdir -p artifacts
+          DEB=$(ls packages/*.deb | head -1)
+          VERSION=$(grep '^Version:' pccontrol/control | awk '{print $2}')
+          cp "$DEB" "artifacts/com.zjx.ioscontrol_${VERSION}_rootless.deb"
+          echo "Rootless deb: artifacts/com.zjx.ioscontrol_${VERSION}_rootless.deb"
+
+      # ── Roothide build ─────────────────────────────────────────────────────
+      - name: Clean for Roothide build
+        run: make clean
+        env:
+          THEOS: ${{ github.workspace }}/theos
+
+      - name: Build Roothide .deb
+        run: make package THEOS_PACKAGE_SCHEME=roothide FINALPACKAGE=1
+        env:
+          THEOS: ${{ github.workspace }}/theos
+
+      - name: Save Roothide .deb
+        run: |
+          DEB=$(ls packages/*.deb | head -1)
+          VERSION=$(grep '^Version:' pccontrol/control | awk '{print $2}')
+          cp "$DEB" "artifacts/com.zjx.ioscontrol_${VERSION}_roothide.deb"
+          echo "Roothide deb: artifacts/com.zjx.ioscontrol_${VERSION}_roothide.deb"
+
+      # ── Upload artifacts ───────────────────────────────────────────────────
+      - name: Upload Rootless deb
         uses: actions/upload-artifact@v4
         with:
           name: ZXTouch-rootless-deb
-          path: packages/*.deb
+          path: artifacts/*_rootless.deb
           if-no-files-found: error
+
+      - name: Upload Roothide deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZXTouch-roothide-deb
+          path: artifacts/*_roothide.deb
+          if-no-files-found: error
+
+      # ── Create GitHub Release (on tag push only) ───────────────────────────
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*_rootless.deb
+            artifacts/*_roothide.deb
+          generate_release_notes: true
+          body: |
+            ## ZXTouch Rootless
+
+            | File | Jailbreak | iOS |
+            |------|-----------|-----|
+            | `*_rootless.deb` | Dopamine | 15.0 – 16.6.1 |
+            | `*_roothide.deb` | Roothide / Serotonin | 15.0 – 16.6.1 |
+
+            ### Installation
+            1. Download the `.deb` for your jailbreak
+            2. Install via Filza or SSH: `dpkg -i <file>.deb && killall -9 SpringBoard`
+
+            > Python scripts require `python3` from the Procursus repo.

@@ -205,7 +205,7 @@
         if (cell == nil) {
             //没有,创建一个
             NSLog(@"create a setting cell switch");
-            cell = [[TableViewCellWithSlider alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellID];
+            cell = [[TableViewCellWithSlider alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"SliderCell"];
         }
         
         cell.title.text = NSLocalizedString(@"alpha", nil);

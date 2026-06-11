@@ -1,6 +1,4 @@
-#!/bin/bash
-echo "`date "+%m-%d-%Y %T"`: Start running script. Script path: $1" >>  /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output
-while read line;
-do
-   echo "`date "+%m-%d-%Y %T"`: $line" >> /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output;
+#!/bin/sh
+while IFS= read -r line; do
+    printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$line"
 done

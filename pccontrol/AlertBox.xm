@@ -1,5 +1,6 @@
 #include "AlertBox.h"
 #include "SocketServer.h"
+#import <UIKit/UIKit.h>
 
 void showAlertBoxFromRawData(UInt8 *eventData, NSError **error)
 {
@@ -10,37 +11,33 @@ void showAlertBoxFromRawData(UInt8 *eventData, NSError **error)
         *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999 userInfo:@{NSLocalizedDescriptionKey:@"-1;;Unable to show alert box. The socket format should be title;;content;;duration.\r\n"}];
         return;
     }
-    if ([alertDataArray[2] intValue] == 0)
-    {
-        *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999 userInfo:@{NSLocalizedDescriptionKey:@"-1;;Duration should be a integer that is greater than 0\r\n"}];
-        return;
-    }
     showAlertBox(alertDataArray[0], alertDataArray[1], [alertDataArray[2] intValue]);
 }
 
 void showAlertBox(NSString* title, NSString* content, int dismissTime)
 {
-    NSMutableDictionary* dict = [NSMutableDictionary dictionary];
-    [dict setObject: title forKey: (__bridge NSString*)kCFUserNotificationAlertHeaderKey];
-    [dict setObject: content forKey: (__bridge NSString*)kCFUserNotificationAlertMessageKey];
-    [dict setObject: @"Ok" forKey:(__bridge NSString*)kCFUserNotificationDefaultButtonTitleKey];
-    
-    SInt32 error = 0;
-    CFUserNotificationRef alert = CFUserNotificationCreate(NULL, 0, kCFUserNotificationPlainAlertLevel, &error, (__bridge CFDictionaryRef)dict);
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIAlertController *alert = [UIAlertController
+            alertControllerWithTitle:title
+            message:content
+            preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"OK"
+            style:UIAlertActionStyleDefault handler:nil]];
 
-    CFOptionFlags response;
-    
-     if((error) || (CFUserNotificationReceiveResponse(alert, dismissTime, &response))) {
-        NSLog(@"com.zjx.springboard: alert error or no user response after %d seconds for title: %@. Content %@", dismissTime, title, content);
-     }
-    
-    /*
-    else if((response & 0x3) == kCFUserNotificationAlternateResponse) {
-        NSLog(@"cancel");
-    } else if((response & 0x3) == kCFUserNotificationDefaultResponse) {
-        NSLog(@"view");
-    }
-    */
+        // Find a view controller that can present
+        UIWindowScene *scene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+        UIViewController *presenter = scene.windows.lastObject.rootViewController;
+        while (presenter.presentedViewController)
+            presenter = presenter.presentedViewController;
 
-    CFRelease(alert);
+        [presenter presentViewController:alert animated:YES completion:nil];
+
+        // Auto-dismiss after dismissTime seconds if > 0
+        if (dismissTime > 0) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(dismissTime * NSEC_PER_SEC)),
+                dispatch_get_main_queue(), ^{
+                    [alert dismissViewControllerAnimated:YES completion:nil];
+                });
+        }
+    });
 }

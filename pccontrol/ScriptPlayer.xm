@@ -257,7 +257,7 @@ static BOOL isPlaying = false;
     }
     
     // check python exists
-    if (![[NSFileManager defaultManager] fileExistsAtPath:jbroot(@"/usr/bin/python3")])
+    if (![[NSFileManager defaultManager] isExecutableFileAtPath:jbroot(@"/usr/bin/python3")])
     {
         showAlertBox(@"Error", @"Cannot play this script. python3 not found. Please install Python 3 on your device.", 999);
         isPlaying = false;

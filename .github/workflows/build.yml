@@ -24,7 +24,7 @@ jobs:
             -target zxtouch \
             -sdk iphoneos \
             -configuration Release \
-            -derivedDataPath ./app-build \
+            SYMROOT="$(pwd)/app-build" \
             ONLY_ACTIVE_ARCH=NO \
             ARCHS="arm64 arm64e" \
             CODE_SIGN_IDENTITY="" \

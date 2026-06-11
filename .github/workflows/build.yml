@@ -92,7 +92,7 @@ jobs:
         run: |
           cp layout/DEBIAN/postinst-roothide layout/DEBIAN/postinst
           chmod +x layout/DEBIAN/postinst
-          sed -i 's/^Architecture: iphoneos-arm64$/Architecture: iphoneos-arm64e/' pccontrol/control
+          sed -i '' 's/^Architecture: iphoneos-arm64$/Architecture: iphoneos-arm64e/' pccontrol/control
 
       - name: Clean for Roothide build
         run: make clean

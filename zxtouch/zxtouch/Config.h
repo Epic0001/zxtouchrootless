@@ -17,4 +17,7 @@
 
 #define TOUCH_INDICATOR_DEFAULT_ALPHA 0.7
 
+// Activator is not used in this rootless build; define path to avoid compile errors
+#define ACTIVATOR_CONFIG_PATH @"/var/mobile/Library/ZXTouch/config/tweak/activator_config.plist"
+
 #endif /* Config_h */

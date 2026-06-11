@@ -260,13 +260,13 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 
             switch (ori) {
                 case UIInterfaceOrientationLandscapeLeft:
-                    // device rotated CCW: portrait-y → landscape-x, portrait-x inverted → landscape-y
-                    xOnScreen = y * W;
-                    yOnScreen = (1.0f - x) * H;
-                    break;
-                case UIInterfaceOrientationLandscapeRight:
+                    // CCW rotation: portrait-y inverted → landscape-x, portrait-x → landscape-y
                     xOnScreen = (1.0f - y) * W;
                     yOnScreen = x * H;
+                    break;
+                case UIInterfaceOrientationLandscapeRight:
+                    xOnScreen = y * W;
+                    yOnScreen = (1.0f - x) * H;
                     break;
                 case UIInterfaceOrientationPortraitUpsideDown:
                     xOnScreen = (1.0f - x) * W;

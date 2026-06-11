@@ -248,11 +248,35 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 
             IOHIDFloat majorRadius = IOHIDEventGetFloatValue(event, 0xb0014);
 
-            // IOHIDEvent normalized coords (0.0-1.0) are already orientation-aware
-            // Simply multiply by current UIKit bounds to get screen-space points
-            CGRect currentBounds = [UIScreen mainScreen].bounds;
-            CGFloat xOnScreen = x * currentBounds.size.width;
-            CGFloat yOnScreen = y * currentBounds.size.height;
+            // IOHIDEvent coords are in PORTRAIT physical space (not orientation-aware).
+            // Apply orientation-specific transform to get UIKit landscape points.
+            CGRect b = [UIScreen mainScreen].bounds;
+            CGFloat W = b.size.width, H = b.size.height;
+            CGFloat xOnScreen, yOnScreen;
+
+            UIInterfaceOrientation ori = UIInterfaceOrientationUnknown;
+            UIWindowScene *sc = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+            if (sc) ori = sc.interfaceOrientation;
+
+            switch (ori) {
+                case UIInterfaceOrientationLandscapeLeft:
+                    // device rotated CCW: portrait-y → landscape-x, portrait-x inverted → landscape-y
+                    xOnScreen = y * W;
+                    yOnScreen = (1.0f - x) * H;
+                    break;
+                case UIInterfaceOrientationLandscapeRight:
+                    xOnScreen = (1.0f - y) * W;
+                    yOnScreen = x * H;
+                    break;
+                case UIInterfaceOrientationPortraitUpsideDown:
+                    xOnScreen = (1.0f - x) * W;
+                    yOnScreen = (1.0f - y) * H;
+                    break;
+                default: // Portrait
+                    xOnScreen = x * W;
+                    yOnScreen = y * H;
+                    break;
+            }
 
             if ( touch == 1 && eventMask & 2 )
                 [touchIndicatorWindow showIndicator:index withX:xOnScreen andY:yOnScreen majorRadius:majorRadius];

@@ -166,7 +166,7 @@ static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef serv
             {
                 NSError *err = nil;
                 stopScriptPlaying(&err);
-                [Toast showToastWithContent:@"Script stopped" type:4 duration:1.0f position:0 fontSize:0];
+                showAlertBox(@"ZXTouch", @"Script stopped.", 1);
                 return;
             }
             if (isRecordingStart())

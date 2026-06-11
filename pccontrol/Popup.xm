@@ -114,71 +114,83 @@
     return self;
 }
 
-// Collect all .bdl paths recursively (depth 2 — handles scripts/ and scripts/recording/)
-- (NSArray<NSDictionary*>*) collectScripts {
-    NSMutableArray *result = [NSMutableArray array];
+- (void) populateScrollView:(NSArray<NSDictionary*>*)items {
+    for (UIView *v in _scriptScrollView.subviews) [v removeFromSuperview];
+    CGFloat y = 4;
+    for (NSDictionary *item in items) {
+        UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+        [btn setTitle:item[@"label"] forState:UIControlStateNormal];
+        btn.titleLabel.font = [UIFont systemFontOfSize:14];
+        btn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+        btn.frame = CGRectMake(8, y, PANEL_WIDTH - 16, BTN_H);
+        btn.backgroundColor = [UIColor whiteColor];
+        btn.layer.cornerRadius = 8;
+        btn.layer.borderColor = [UIColor colorWithWhite:0.88 alpha:1.0].CGColor;
+        btn.layer.borderWidth = 1;
+        NSString *action = item[@"action"];
+        if ([action isEqualToString:@"folder"]) {
+            [btn setTitleColor:[UIColor systemBlueColor] forState:UIControlStateNormal];
+            NSString *folderPath = item[@"path"];
+            [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+                [self showFolder:folderPath name:item[@"folderName"]];
+            }] forControlEvents:UIControlEventTouchUpInside];
+        } else if ([action isEqualToString:@"back"]) {
+            [btn setTitleColor:[UIColor systemOrangeColor] forState:UIControlStateNormal];
+            [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+                [self refreshScriptList];
+            }] forControlEvents:UIControlEventTouchUpInside];
+        } else {
+            NSString *fullPath = item[@"path"];
+            [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
+                [self hide];
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    NSError *err = nil;
+                    playScript((UInt8*)[fullPath UTF8String], &err);
+                    if (err) showAlertBox(@"Error", [err localizedDescription], 999);
+                });
+            }] forControlEvents:UIControlEventTouchUpInside];
+        }
+        [_scriptScrollView addSubview:btn];
+        y += BTN_H + 6;
+    }
+    _scriptScrollView.contentSize = CGSizeMake(PANEL_WIDTH, y + 4);
+    [_scriptScrollView setContentOffset:CGPointZero animated:NO];
+}
+
+- (void) showFolder:(NSString*)folderPath name:(NSString*)name {
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSArray *contents = [[fm contentsOfDirectoryAtPath:folderPath error:nil]
+                         sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+    NSMutableArray *items = [NSMutableArray array];
+    [items addObject:@{@"label": @"← Back", @"action": @"back"}];
+    for (NSString *n in contents) {
+        if (![n hasSuffix:@".bdl"]) continue;
+        NSString *path = [folderPath stringByAppendingPathComponent:n];
+        NSString *label = [n substringToIndex:n.length - 4];
+        [items addObject:@{@"label": label, @"path": path, @"action": @"play"}];
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{ [self populateScrollView:items]; });
+}
+
+- (void) refreshScriptList {
     NSString *base = getScriptsFolder();
     NSFileManager *fm = [NSFileManager defaultManager];
-    NSError *err = nil;
-    NSArray *top = [[fm contentsOfDirectoryAtPath:base error:&err]
+    NSArray *top = [[fm contentsOfDirectoryAtPath:base error:nil]
                     sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+    NSMutableArray *items = [NSMutableArray array];
     for (NSString *name in top) {
         NSString *path = [base stringByAppendingPathComponent:name];
         BOOL isDir = NO;
         [fm fileExistsAtPath:path isDirectory:&isDir];
-        if (isDir) {
-            // show items inside subfolders (e.g. recording/)
-            NSArray *sub = [[fm contentsOfDirectoryAtPath:path error:nil]
-                            sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
-            for (NSString *subName in sub) {
-                NSString *subPath = [path stringByAppendingPathComponent:subName];
-                NSString *label = [NSString stringWithFormat:@"%@/%@",
-                    name,
-                    [subName hasSuffix:@".bdl"] ? [subName substringToIndex:subName.length-4] : subName];
-                [result addObject:@{@"path": subPath, @"label": label}];
-            }
-        } else {
-            NSString *label = [name hasSuffix:@".bdl"] ? [name substringToIndex:name.length-4] : name;
-            [result addObject:@{@"path": path, @"label": label}];
+        if ([name hasSuffix:@".bdl"]) {
+            // .bdl is a script bundle — show as single tappable script
+            [items addObject:@{@"label": [name substringToIndex:name.length-4], @"path": path, @"action": @"play"}];
+        } else if (isDir) {
+            // subfolder (e.g. "recording") — show as folder entry
+            [items addObject:@{@"label": [NSString stringWithFormat:@"📁 %@", name], @"path": path, @"folderName": name, @"action": @"folder"}];
         }
     }
-    return result;
-}
-
-- (void) refreshScriptList {
-    NSArray *items = [self collectScripts];
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        for (UIView *v in _scriptScrollView.subviews) [v removeFromSuperview];
-
-        CGFloat y = 4;
-        CGFloat btnW = PANEL_WIDTH - 16;
-        for (NSDictionary *item in items) {
-            NSString *fullPath = item[@"path"];
-            NSString *display  = item[@"label"];
-            UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-            [btn setTitle:display forState:UIControlStateNormal];
-            btn.titleLabel.font = [UIFont systemFontOfSize:13];
-            btn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-            btn.contentEdgeInsets = UIEdgeInsetsMake(0, 10, 0, 10);
-            btn.frame = CGRectMake(8, y, btnW, BTN_H);
-            btn.backgroundColor = [UIColor whiteColor];
-            btn.layer.cornerRadius = 8;
-            btn.layer.borderColor = [UIColor colorWithWhite:0.88 alpha:1.0].CGColor;
-            btn.layer.borderWidth = 1;
-            [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *action) {
-                [self hide];
-                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                    NSError *playErr = nil;
-                    playScript((UInt8*)[fullPath UTF8String], &playErr);
-                    if (playErr) showAlertBox(@"Error", [playErr localizedDescription], 999);
-                });
-            }] forControlEvents:UIControlEventTouchUpInside];
-            [_scriptScrollView addSubview:btn];
-            y += BTN_H + 6;
-        }
-        _scriptScrollView.contentSize = CGSizeMake(PANEL_WIDTH, y + 4);
-    });
+    dispatch_async(dispatch_get_main_queue(), ^{ [self populateScrollView:items]; });
 }
 
 - (void) recordingStart {

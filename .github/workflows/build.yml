@@ -30,18 +30,20 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            PRODUCT_BUNDLE_IDENTIFIER=com.zjx.zxtouch \
-            | xcpretty || true
+            PRODUCT_BUNDLE_IDENTIFIER=com.zjx.zxtouch
+          echo "--- Built app location ---"
+          find ./app-build -name "*.app" -type d 2>/dev/null || echo "No .app found"
 
       - name: Sign App with ldid
         run: |
-          APP=app-build/Build/Products/Release-iphoneos/zxtouch.app
-          # Install ldid if not present
+          # Find the built app wherever xcodebuild put it
+          APP=$(find ./app-build -name "zxtouch.app" -type d | head -1)
+          echo "App found at: $APP"
           brew install ldid 2>/dev/null || true
           ldid -Szxtouch/app-entitlements.plist "$APP/zxtouch"
-          # Replace the pre-built app in layout with our newly built one
           rm -rf layout/Applications/zxtouch.app
           cp -r "$APP" layout/Applications/zxtouch.app
+          echo "App installed to layout"
 
       - name: Setup Theos
         uses: beerpiss/theos-action@v1

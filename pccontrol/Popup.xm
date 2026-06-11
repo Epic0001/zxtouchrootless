@@ -114,24 +114,51 @@
     return self;
 }
 
-- (void) refreshScriptList {
-    NSString *scriptsPath = getScriptsFolder();
+// Collect all .bdl paths recursively (depth 2 — handles scripts/ and scripts/recording/)
+- (NSArray<NSDictionary*>*) collectScripts {
+    NSMutableArray *result = [NSMutableArray array];
+    NSString *base = getScriptsFolder();
+    NSFileManager *fm = [NSFileManager defaultManager];
     NSError *err = nil;
-    NSArray *scripts = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:scriptsPath error:&err];
-    NSArray *sorted = scripts ? [scripts sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)] : @[];
+    NSArray *top = [[fm contentsOfDirectoryAtPath:base error:&err]
+                    sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+    for (NSString *name in top) {
+        NSString *path = [base stringByAppendingPathComponent:name];
+        BOOL isDir = NO;
+        [fm fileExistsAtPath:path isDirectory:&isDir];
+        if (isDir) {
+            // show items inside subfolders (e.g. recording/)
+            NSArray *sub = [[fm contentsOfDirectoryAtPath:path error:nil]
+                            sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+            for (NSString *subName in sub) {
+                NSString *subPath = [path stringByAppendingPathComponent:subName];
+                NSString *label = [NSString stringWithFormat:@"%@/%@",
+                    name,
+                    [subName hasSuffix:@".bdl"] ? [subName substringToIndex:subName.length-4] : subName];
+                [result addObject:@{@"path": subPath, @"label": label}];
+            }
+        } else {
+            NSString *label = [name hasSuffix:@".bdl"] ? [name substringToIndex:name.length-4] : name;
+            [result addObject:@{@"path": path, @"label": label}];
+        }
+    }
+    return result;
+}
+
+- (void) refreshScriptList {
+    NSArray *items = [self collectScripts];
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Remove existing script buttons
         for (UIView *v in _scriptScrollView.subviews) [v removeFromSuperview];
 
         CGFloat y = 4;
         CGFloat btnW = PANEL_WIDTH - 16;
-        for (NSString *scriptName in sorted) {
+        for (NSDictionary *item in items) {
+            NSString *fullPath = item[@"path"];
+            NSString *display  = item[@"label"];
             UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-            NSString *display = [scriptName hasSuffix:@".bdl"] ?
-                [scriptName substringToIndex:scriptName.length - 4] : scriptName;
             [btn setTitle:display forState:UIControlStateNormal];
-            btn.titleLabel.font = [UIFont systemFontOfSize:14];
+            btn.titleLabel.font = [UIFont systemFontOfSize:13];
             btn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
             btn.contentEdgeInsets = UIEdgeInsetsMake(0, 10, 0, 10);
             btn.frame = CGRectMake(8, y, btnW, BTN_H);
@@ -139,8 +166,6 @@
             btn.layer.cornerRadius = 8;
             btn.layer.borderColor = [UIColor colorWithWhite:0.88 alpha:1.0].CGColor;
             btn.layer.borderWidth = 1;
-
-            NSString *fullPath = [scriptsPath stringByAppendingPathComponent:scriptName];
             [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *action) {
                 [self hide];
                 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -149,7 +174,6 @@
                     if (playErr) showAlertBox(@"Error", [playErr localizedDescription], 999);
                 });
             }] forControlEvents:UIControlEventTouchUpInside];
-
             [_scriptScrollView addSubview:btn];
             y += BTN_H + 6;
         }

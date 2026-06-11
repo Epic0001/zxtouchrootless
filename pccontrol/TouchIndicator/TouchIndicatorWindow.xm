@@ -27,6 +27,7 @@
 
 
 static Boolean isShowing = false;
+static Boolean showCoordinates = true;
 
 static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHIDServiceRef service, IOHIDEventRef parentEvent);
 
@@ -104,6 +105,8 @@ void handleTouchIndicatorTaskWithRawData(UInt8* eventData, NSError **error)
             return;
         }
 
+        if (config[@"touch_indicator"][@"show_coordinates"] != nil)
+            showCoordinates = [config[@"touch_indicator"][@"show_coordinates"] boolValue];
         [touchIndicatorWindow setIndicatorColorWithRed:red green:green blue:blue alpha:alpha];
     }
     else
@@ -171,7 +174,9 @@ void startTouchIndicator(NSError **error)
                 green = [config[@"touch_indicator"][@"color"][@"g"] floatValue];
                 blue = [config[@"touch_indicator"][@"color"][@"b"] floatValue];
                 alpha = [config[@"touch_indicator"][@"color"][@"alpha"] floatValue];
-                NSLog(@"com.zjx.springboard: red: %f, g: %f, b: %f", red, green, blue);
+                if (config[@"touch_indicator"][@"show_coordinates"] != nil)
+                    showCoordinates = [config[@"touch_indicator"][@"show_coordinates"] boolValue];
+                NSLog(@"com.zjx.springboard: red: %f, g: %f, b: %f, showCoords: %d", red, green, blue, showCoordinates);
             }
             @catch (NSException *exception) {
                 NSLog(@"com.zjx.springboard: 123123");
@@ -388,11 +393,11 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 
         // add to list
         touchIndicatorViewList[index-1] = indicator;
-        coordinateView[index-1] = coordinateLabelView;
-        
+        coordinateView[index-1] = showCoordinates ? coordinateLabelView : nil;
+
         // add to subview
         [_window addSubview:indicator];
-        [_window addSubview:coordinateLabelView];
+        if (showCoordinates) [_window addSubview:coordinateLabelView];
 
         //[indicator setHidden:YES];
     });

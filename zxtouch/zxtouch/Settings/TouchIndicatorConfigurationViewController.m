@@ -55,9 +55,23 @@
     }
     
     isShowing = [config[@"touch_indicator"][@"show"] boolValue];
+    // ensure show_coordinates key exists
+    if (!config[@"touch_indicator"][@"show_coordinates"]) {
+        [config[@"touch_indicator"] setObject:@(YES) forKey:@"show_coordinates"];
+        [config writeToFile:SPRINGBOARD_CONFIG_PATH atomically:NO];
+    }
     
     springBoardSocket = [[Socket alloc] init];
     [springBoardSocket connect:@"127.0.0.1" byPort:6000];
+}
+
+- (void)switchCoordinatesStatus:(id)sender {
+    UISwitch *s = (UISwitch*)sender;
+    [config[@"touch_indicator"] setObject:@([s isOn]) forKey:@"show_coordinates"];
+    [config writeToFile:SPRINGBOARD_CONFIG_PATH atomically:NO];
+    if (isShowing) {
+        [springBoardSocket send:@"262\r\n"];  // reload config
+    }
 }
 
 - (void)alphaValueChanged:(id)sender {
@@ -124,7 +138,7 @@
     {
         return 1;
     }
-    return 2;
+    return 3;  // show toggle, coordinates toggle, alpha slider
 }
 
 -(NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
@@ -172,9 +186,20 @@
     }
     else if (indexPath.row == 1)
     {
-        static NSString *cellID = @"SliderCell";
-
-        TableViewCellWithSlider *cell = [tableView dequeueReusableCellWithIdentifier:cellID];
+        static NSString *cellID2 = @"SwitchCell2";
+        TableViewCellWithSwitch *cell = [tableView dequeueReusableCellWithIdentifier:@"SwitchCell"];
+        if (cell == nil) {
+            cell = [[TableViewCellWithSwitch alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"SwitchCell"];
+        }
+        [cell setTitleText:@"Show Coordinates"];
+        [cell.switchBtn addTarget:self action:@selector(switchCoordinatesStatus:) forControlEvents:UIControlEventValueChanged];
+        BOOL showCoords = config[@"touch_indicator"][@"show_coordinates"] ? [config[@"touch_indicator"][@"show_coordinates"] boolValue] : YES;
+        [cell.switchBtn setOn:showCoords];
+        result = cell;
+    }
+    else if (indexPath.row == 2)
+    {
+        TableViewCellWithSlider *cell = [tableView dequeueReusableCellWithIdentifier:@"SliderCell"];
         
         //判断队列里面是否有这个cell 没有自己创建，有直接使用
         if (cell == nil) {

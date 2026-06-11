@@ -44,7 +44,7 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     
-    sections = @[NSLocalizedString(@"remoteManagement", nil), NSLocalizedString(@"control", nil), NSLocalizedString(@"script", nil)]; // , @"HELP"
+    sections = @[NSLocalizedString(@"remoteManagement", nil), NSLocalizedString(@"control", nil), NSLocalizedString(@"script", nil), @"Appearance", @"About"];
     configManager = [[ConfigManager alloc] initWithPath:SPRINGBOARD_CONFIG_PATH];
     BOOL doubleClickPopup = YES;
     if ([configManager getValueFromKey:@"double_click_volume_show_popup"])
@@ -57,7 +57,9 @@
     {
         switchAppBeforeRunScript = [[configManager getValueFromKey:@"switch_app_before_run_script"] boolValue];
     }
-    
+
+    BOOL darkMode = [[NSUserDefaults standardUserDefaults] boolForKey:@"dark_mode"];
+
     // [@{"type": ?, @"title": ?, @"content": ?, ... more depends on the cell type}]
     //
     cellsForEachSection = @[
@@ -70,6 +72,12 @@
         ],
         @[
             @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"switchAppBeforePlaying", nil), @"switch_click_handler": NSStringFromSelector(@selector(handleSwitchAppBeforePlaying:)), @"switch_init_status": @(switchAppBeforeRunScript)}
+        ],
+        @[
+            @{@"type": @(SETTING_CELL_SWITCH), @"title": @"Dark Mode", @"switch_click_handler": NSStringFromSelector(@selector(handleDarkModeToggle:)), @"switch_init_status": @(darkMode)}
+        ],
+        @[
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"ZXTouch Rootless 0.08", @"secondary_title": @"iOS 16 port by Epic0001", @"row_click_handler": NSStringFromSelector(@selector(handleCreditsTap:))}
         ]
     ];
      
@@ -130,6 +138,42 @@
     {
         NSLog(@"Stop WebServer");
     }
+}
+
+- (void)handleDarkModeToggle:(UISwitch*)s {
+    BOOL dark = [s isOn];
+    [[NSUserDefaults standardUserDefaults] setBool:dark forKey:@"dark_mode"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+
+    // Apply to all app windows immediately
+    UIUserInterfaceStyle style = dark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    for (UIWindowScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            for (UIWindow *win in scene.windows) {
+                win.overrideUserInterfaceStyle = style;
+            }
+        }
+    }
+
+    // Persist to tweak config so the panel can read it
+    NSMutableDictionary *tweakConfig = [NSMutableDictionary dictionaryWithContentsOfFile:SPRINGBOARD_CONFIG_PATH];
+    if (!tweakConfig) tweakConfig = [NSMutableDictionary dictionary];
+    tweakConfig[@"dark_mode"] = @(dark);
+    [tweakConfig writeToFile:SPRINGBOARD_CONFIG_PATH atomically:YES];
+
+    // Notify SpringBoard to apply dark mode to the panel (command 903)
+    Socket *socket = [[Socket alloc] init];
+    [socket connect:@"127.0.0.1" byPort:6000];
+    [socket send:@"903"];
+    [socket recv:1024];
+    [socket close];
+}
+
+- (void)handleCreditsTap:(TableViewCellWithEntry*)cell {
+    // Show a brief about alert
+    [Util showAlertBoxWithOneOption:self title:@"ZXTouch Rootless"
+        message:@"iOS 16 Rootless (Dopamine) port by Epic0001\nhttps://github.com/Epic0001/IOS13-SimulateTouch"
+        buttonString:@"OK"];
 }
 
 - (void)handleTouchIndicatorWithEntryCellInstance:(TableViewCellWithEntry*)cell {

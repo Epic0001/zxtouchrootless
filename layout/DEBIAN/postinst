@@ -27,6 +27,16 @@ fi
 
 chown -R mobile:mobile /var/mobile/Library/ZXTouch
 
+# Point python3 to the highest working version (3.7 is broken on iOS 16)
+for VER in python3.11 python3.10 python3.9 python3.8; do
+    PYBIN=/var/jb/usr/bin/$VER
+    if [ -x "$PYBIN" ]; then
+        ln -sf "$PYBIN" /var/jb/usr/bin/python3
+        ln -sf "$PYBIN" /var/jb/bin/python3
+        break
+    fi
+done
+
 # Install zxtouch Python module into all known site-packages locations
 for SP in /var/jb/usr/lib/python3*/site-packages; do
     if [ -d "$SP" ] && [ "$SP" != "/var/jb/usr/lib/python3.7/site-packages" ]; then

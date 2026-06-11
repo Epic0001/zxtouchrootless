@@ -27,16 +27,19 @@ fi
 
 chown -R mobile:mobile /var/mobile/Library/ZXTouch
 
-# Use system Python3 if available (from Procursus), fallback to bundled
+# Install zxtouch Python module into the active Python3 site-packages
 mkdir -p /var/jb/usr/bin
-if [ -x /var/jb/usr/bin/python3 ] && /var/jb/usr/bin/python3 -c "print(1)" > /dev/null 2>&1; then
-    echo "Using system python3"
-elif [ -x /var/jb/usr/bin/python3.10 ]; then
-    ln -sf /var/jb/usr/bin/python3.10 /var/jb/usr/bin/python3 2>/dev/null || true
-elif [ -x /var/jb/usr/bin/python3.11 ]; then
-    ln -sf /var/jb/usr/bin/python3.11 /var/jb/usr/bin/python3 2>/dev/null || true
-else
-    ln -sf /var/jb/bin/python3 /var/jb/usr/bin/python3 2>/dev/null || true
+PYTHON3=/var/jb/usr/bin/python3
+if [ ! -x "$PYTHON3" ]; then
+    ln -sf /var/jb/bin/python3 "$PYTHON3" 2>/dev/null || true
+fi
+if [ -x "$PYTHON3" ]; then
+    # Copy zxtouch module to every known site-packages location
+    for SP in $($PYTHON3 -c "import site; print(' '.join(site.getsitepackages()))" 2>/dev/null); do
+        if [ -d "$SP" ]; then
+            cp -rn /var/jb/usr/lib/python3.7/site-packages/zxtouch "$SP/" 2>/dev/null || true
+        fi
+    done
 fi
 
 # Strip expired dev provisioning profile and re-sign with ldid

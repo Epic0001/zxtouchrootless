@@ -60,10 +60,12 @@ static UIView* makeSep() {
 - (void) buildWindow {
     dispatch_async(dispatch_get_main_queue(), ^{
         CGRect sb = [UIScreen mainScreen].bounds;
-        CGFloat pw = MIN(sb.size.width, sb.size.height) * 0.75f;
-        pw = MAX(pw, 240); pw = MIN(pw, 360);
-        CGFloat ph = sb.size.height * 0.65f;
-        ph = MAX(ph, 300); ph = MIN(ph, 480);
+        CGFloat shortSide = MIN(sb.size.width, sb.size.height);
+        CGFloat longSide  = MAX(sb.size.width, sb.size.height);
+        CGFloat pw = shortSide * 0.65f;
+        pw = MAX(pw, 220); pw = MIN(pw, 320);
+        CGFloat ph = longSide * 0.55f;
+        ph = MAX(ph, 280); ph = MIN(ph, 420);
         CGFloat cx = CGRectGetMidX(sb) - pw/2;
         CGFloat cy = CGRectGetMidY(sb) - ph/2;
 
@@ -231,13 +233,20 @@ static UIView* makeSep() {
 - (void) repositionWindow {
     dispatch_async(dispatch_get_main_queue(), ^{
         CGRect sb = [UIScreen mainScreen].bounds;
-        CGFloat pw = MIN(sb.size.width, sb.size.height) * 0.75f;
-        pw = MAX(pw, 240); pw = MIN(pw, 360);
-        CGFloat ph = sb.size.height * 0.65f;
-        ph = MAX(ph, 300); ph = MIN(ph, 480);
+        CGFloat shortSide = MIN(sb.size.width, sb.size.height);
+        CGFloat longSide  = MAX(sb.size.width, sb.size.height);
+        CGFloat pw = shortSide * 0.65f;
+        pw = MAX(pw, 220); pw = MIN(pw, 320);
+        CGFloat ph = longSide * 0.55f;
+        ph = MAX(ph, 280); ph = MIN(ph, 420);
         CGFloat cx = CGRectGetMidX(sb) - pw/2;
         CGFloat cy = CGRectGetMidY(sb) - ph/2;
         _window.frame = CGRectMake(cx, cy, pw, ph);
+        // Resize scrollview to fill to the bottom of the new window height
+        if (_scriptScrollView) {
+            CGFloat scrollTop = _scriptScrollView.frame.origin.y;
+            _scriptScrollView.frame = CGRectMake(0, scrollTop, pw, ph - scrollTop - 8);
+        }
     });
 }
 
@@ -270,15 +279,38 @@ static UIView* makeSep() {
             }] forControlEvents:UIControlEventTouchUpInside];
         } else {
             NSString *fullPath = item[@"path"];
-            int rep = _repeatCount; float spd = _speed;
             [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
-                [self hide];
-                [self saveSettings:rep speed:spd];
-                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                    NSError *err = nil;
-                    playScript((UInt8*)[fullPath UTF8String], &err);
-                    if (err) showAlertBox(@"Error", [err localizedDescription], 999);
-                });
+                if (_settingsVisible) {
+                    // Settings mode on: ask for confirm with current settings
+                    NSString *settingsInfo = [NSString stringWithFormat:
+                        @"Script: %@\nRepeat: %d time(s)\nSpeed: %.1f×\n\nRun with these settings?",
+                        item[@"label"], _repeatCount + 1, _speed];
+                    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Play Settings"
+                        message:settingsInfo preferredStyle:UIAlertControllerStyleAlert];
+                    [alert addAction:[UIAlertAction actionWithTitle:@"Run" style:UIAlertActionStyleDefault handler:^(UIAlertAction *aa) {
+                        [self hide];
+                        [self saveSettings:_repeatCount speed:_speed];
+                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                            NSError *err = nil;
+                            playScript((UInt8*)[fullPath UTF8String], &err);
+                            if (err) showAlertBox(@"Error", [err localizedDescription], 999);
+                        });
+                    }]];
+                    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [[[[UIApplication sharedApplication] connectedScenes].allObjects.firstObject windows].firstObject.rootViewController
+                            presentViewController:alert animated:YES completion:nil];
+                    });
+                } else {
+                    // Direct play
+                    [self hide];
+                    [self saveSettings:_repeatCount speed:_speed];
+                    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                        NSError *err = nil;
+                        playScript((UInt8*)[fullPath UTF8String], &err);
+                        if (err) showAlertBox(@"Error", [err localizedDescription], 999);
+                    });
+                }
             }] forControlEvents:UIControlEventTouchUpInside];
         }
         [_scriptScrollView addSubview:btn];

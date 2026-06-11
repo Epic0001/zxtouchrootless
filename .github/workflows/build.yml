@@ -64,7 +64,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/theos
-          key: roothide-theos-${{ runner.os }}-v2
+          key: roothide-theos-${{ runner.os }}-v3
 
       - name: Install roothide Theos
         if: steps.cache-theos.outputs.cache-hit != 'true'
@@ -93,7 +93,6 @@ jobs:
           cp layout/DEBIAN/postinst-roothide layout/DEBIAN/postinst
           chmod +x layout/DEBIAN/postinst
           rm layout/DEBIAN/postinst-roothide
-          sed -i '' 's/^Architecture: iphoneos-arm64$/Architecture: iphoneos-arm64e/' control
 
       - name: Clean for Roothide build
         run: make clean

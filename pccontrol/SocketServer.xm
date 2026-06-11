@@ -116,7 +116,7 @@ static void TCPServerAcceptCallBack(CFSocketRef socket, CFSocketCallBackType typ
         }
         
         struct sockaddr_in *addr_in = (struct sockaddr_in *)name;
-        NSLog(@"### com.zjx.springboard: connection starts", inet_ntoa(addr_in-> sin_addr), addr_in->sin_port);
+        NSLog(@"### com.zjx.springboard: connection from %s:%d", inet_ntoa(addr_in->sin_addr), addr_in->sin_port);
         
         readStreamRef = NULL;
         writeStreamRef = NULL;

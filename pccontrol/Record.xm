@@ -84,7 +84,7 @@ void startRecording(CFWriteStreamRef requestClient, NSError **error)
     }
 
     // write to plist file in script directory
-    [infoDict writeToFile:[NSString stringWithFormat:@"%@/info.plist", scriptDirectory, currentDateTime] atomically:YES];
+    [infoDict writeToFile:[NSString stringWithFormat:@"%@/info.plist", scriptDirectory] atomically:YES];
 
 
     // generate a raw file for writing

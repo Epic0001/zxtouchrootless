@@ -162,10 +162,17 @@ static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef serv
                 return;
             }
 
+            if (isScriptPlaying())
+            {
+                NSError *err = nil;
+                stopScriptPlaying(&err);
+                [Toast showToastWithContent:@"Script stopped" type:4 duration:1.0f position:0 fontSize:0];
+                return;
+            }
             if (isRecordingStart())
             {
                 stopRecording();
-                showAlertBox(@"Recording stopped", [NSString stringWithFormat:@"Your touch record has been saved. Please open zxtouch app to see your script list. This record script is located at %@recording", getScriptsFolder()], 999);
+                [Toast showToastWithContent:@"Recording saved" type:4 duration:1.5f position:0 fontSize:0];
                 [popupWindow show];
                 return;
             }

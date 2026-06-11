@@ -68,3 +68,8 @@ void stopScriptPlaying(NSError **error)
 {
     [scriptPlayer forceStop:error];
 }
+
+BOOL isScriptPlaying()
+{
+    return scriptPlayer && [scriptPlayer isPlaying];
+}

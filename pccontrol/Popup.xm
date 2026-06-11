@@ -6,6 +6,7 @@
 #include "AlertBox.h"
 #include "Toast.h"
 #include "Common.h"
+#include "Config.h"
 #import <UIKit/UIKit.h>
 
 #define BTN_H 38

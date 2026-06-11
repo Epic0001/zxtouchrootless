@@ -38,12 +38,10 @@ NSString* inputTextFromRawData(UInt8 *eventData, NSError **error)
         return @"";
     }
 
-    // otherwise, send it to appdelegate
-    if ([data count] == 2)
-    {
-        taskContent = data[1];
-    }
-    [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"com.zjx.zxtouch.keyboardcontrol" object:NULL userInfo:@{@"task_id": data[0], @"task_content": taskContent} deliverImmediately: true];
-    return @"Successfully notify the appdelegate tweak. But not sure whether it works...";
+    // Text injection via appdelegate tweak is not supported in this rootless build.
+    // The appdelegate tweak has been removed due to iOS 16 incompatibility.
+    *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999
+        userInfo:@{NSLocalizedDescriptionKey:@"-1;;Text input (insert_text/key_press) is not supported in this build. Use clipboard paste as an alternative.\r\n"}];
+    return nil;
 
 }

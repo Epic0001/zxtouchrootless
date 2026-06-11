@@ -294,6 +294,9 @@ static BOOL isPlaying = false;
 
 -(void) playHasStopped
 {
+    // If forceStop already called clear(), isPlaying is false — don't show finished popup
+    if (!isPlaying) return;
+
     NSLog(@"com.zjx.springboard: script has finished");
     _completedRuns++;
 
@@ -366,8 +369,9 @@ static BOOL isPlaying = false;
     }
     else if (currentScriptType == 2)
     {
-        // kill all python3 process
-        system2([ROOT_PATH_NS(@"/usr/bin/zxtouchb") stringByAppendingString:@" -e \"killall -9 python3\""].UTF8String, NULL, NULL);
+        // Kill all python3 processes; SpringBoard runs as root so no sudo needed.
+        // system2 blocks but killall returns quickly, so this is fine.
+        system2([ROOT_PATH_NS(@"/usr/bin/killall") stringByAppendingString:@" -9 python3"].UTF8String, NULL, NULL);
         [self clear];
     }
     else

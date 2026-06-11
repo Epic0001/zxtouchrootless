@@ -35,7 +35,7 @@
 #include "Toast.h"
 #include "Play.h"
 #include "TouchIndicator/TouchIndicatorWindow.h"
-#include <rootless.h>
+#include <roothide.h>
 
 #define IPHONE7P_HEIGHT 1920
 #define IPHONE7P_WIDTH 1080

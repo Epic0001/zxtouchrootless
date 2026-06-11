@@ -1,4 +1,5 @@
 #include "Task.h"
+#include <rootless.h>
 #include "Touch.h"
 #include "Process.h"
 #include "AlertBox.h"
@@ -104,7 +105,7 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
     else if (taskType == TASK_RUN_SHELL)
     {
         @autoreleasepool{
-            call_system([[NSString stringWithFormat:@"sh -c \"%s\"", eventData] UTF8String]);
+            system2([[NSString stringWithFormat:@"%s -c \"%s\"", ROOT_PATH("/bin/sh"), eventData] UTF8String], NULL, NULL);
             notifyClient((UInt8*)"0\r\n", writeStreamRef);
         }
     }

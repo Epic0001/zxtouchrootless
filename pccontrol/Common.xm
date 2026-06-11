@@ -160,7 +160,7 @@ pid_t system2(const char * command, int * infp, int * outfp)
             ::close(i);
 
         setsid();
-        execl("/bin/sh", "sh", "-c", command, NULL);
+        execl(ROOT_PATH("/bin/sh"), "sh", "-c", command, NULL);
         _exit(1);
     }
 

@@ -270,11 +270,14 @@ static BOOL isPlaying = false;
         isPlaying = false;
         return;
     }
-    NSString *commandToRun = [NSString stringWithFormat:@"%@ -u \"%@\" 2>&1 | /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh >> /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output", ROOT_PATH_NS(@"/usr/bin/python3"), filePath];
+    // Ensure output log file exists so the >> redirect doesn't fail
+    NSString *outputLog = @"/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output";
+    if (![[NSFileManager defaultManager] fileExistsAtPath:outputLog])
+        [@"" writeToFile:outputLog atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+    NSString *commandToRun = [NSString stringWithFormat:@"%@ -u \"%@\" 2>&1 | /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh >> %@", ROOT_PATH_NS(@"/usr/bin/python3"), filePath, outputLog];
     NSLog(@"com.zjx.springboard: command to run for running py file %@", commandToRun);
 
-    // here I made it run in background because of a weird thing: ios objc cannot call second system() if the first system() does not return
-    //scriptPlayForceStop = true;
     system2([commandToRun UTF8String], NULL, NULL);
     // add force stop
     [self playHasStopped];
@@ -364,7 +367,7 @@ static BOOL isPlaying = false;
     else if (currentScriptType == 2)
     {
         // kill all python3 process
-        system2("sudo zxtouchb -e \"killall -9 python3\"", NULL, NULL);
+        system2(ROOT_PATH("/usr/bin/zxtouchb") " -e \"killall -9 python3\"", NULL, NULL);
         [self clear];
     }
     else

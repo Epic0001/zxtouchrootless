@@ -39,22 +39,22 @@ if [ -f "$SCRIPT" ]; then
 fi
 
 # Fix broken python3 symlink — Procursus points it to /bin/python3 which doesn't resolve on roothide
+# Also skip python3.7 which is broken on iOS 16
 PYTHON3=$(jbroot /usr/bin/python3)
-if [ ! -x "$PYTHON3" ]; then
-    for VER in python3.11 python3.10 python3.9 python3.8; do
-        PYVER=$(jbroot /usr/bin/$VER)
-        if [ -x "$PYVER" ]; then
-            ln -sf "$PYVER" "$PYTHON3"
-            break
-        fi
-    done
-fi
+for VER in python3.11 python3.10 python3.9 python3.8; do
+    PYVER=$(jbroot /usr/bin/$VER)
+    if [ -x "$PYVER" ]; then
+        ln -sf "$PYVER" "$PYTHON3"
+        break
+    fi
+done
 
-# Install zxtouch Python module into all known site-packages locations
-SITE_BASE=$(jbroot /usr/lib)
-for SP in "$SITE_BASE"/python3*/site-packages; do
+# Install zxtouch Python module into all known package locations (site-packages and dist-packages)
+SRC=$(jbroot /usr/lib/python3.7/site-packages)/zxtouch
+LIBBASE=$(jbroot /usr/lib)
+for SP in "$LIBBASE"/python3*/site-packages "$LIBBASE"/python3*/dist-packages "$LIBBASE"/python3/dist-packages; do
     if [ -d "$SP" ] && [ "$SP" != "$(jbroot /usr/lib/python3.7/site-packages)" ]; then
-        cp -rn "$(jbroot /usr/lib/python3.7/site-packages)/zxtouch" "$SP/" 2>/dev/null || true
+        cp -rn "$SRC" "$SP/" 2>/dev/null || true
     fi
 done
 

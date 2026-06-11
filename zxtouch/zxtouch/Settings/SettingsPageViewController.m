@@ -174,7 +174,7 @@
 - (void)handleCreditsTap:(TableViewCellWithEntry*)cell {
     // Show a brief about alert
     [Util showAlertBoxWithOneOption:self title:@"ZXTouch Rootless"
-        message:@"iOS 16 Rootless (Dopamine) port by Epic0001\nhttps://github.com/Epic0001/IOS13-SimulateTouch"
+        message:@"iOS 16 Rootless (Dopamine) port by Epic0001\nhttps://github.com/Epic0001/zxtouchrootless"
         buttonString:@"OK"];
 }
 

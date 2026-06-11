@@ -206,11 +206,13 @@ static BOOL isPlaying = false;
     int taskType;
     int sleepTime;
     
+    BOOL stoppedByUser = NO;
     while (fgets(buffer, sizeof(char)*256, file) != NULL)
     {
         if (scriptPlayForceStop)
         {
             scriptPlayForceStop = false;
+            stoppedByUser = YES;
             break;
         }
         if (speed > 0 && speed != 1)
@@ -236,7 +238,7 @@ static BOOL isPlaying = false;
 
     }
 
-    [self playHasStopped];
+    if (!stoppedByUser) [self playHasStopped];
 }
 
 -(void) playFromPythonFile:(NSString*) filePath foregroundApp:(NSString*) foregroundApp err:(NSError**) err

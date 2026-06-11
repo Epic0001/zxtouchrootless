@@ -2,10 +2,10 @@ name: Build ZXTouch Package
 
 on:
   push:
-    branches: [ master, main, ios16-rootless ]
+    branches: [ main ]
     tags: [ 'v*' ]
   pull_request:
-    branches: [ master, main ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:

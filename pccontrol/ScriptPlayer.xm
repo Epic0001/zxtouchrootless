@@ -22,10 +22,15 @@ static BOOL isPlaying = false;
     UIView *circleView;
     Boolean scriptPlayForceStop;
     Boolean switchAppBeforePlaying;
+    int _completedRuns;
 }
 
 - (BOOL)isPlaying {
     return isPlaying;
+}
+
+- (int)getCompletedRuns {
+    return _completedRuns;
 }
 
 - (NSString*)getCurrentBundlePath {
@@ -173,7 +178,7 @@ static BOOL isPlaying = false;
 }
 
 // play the script
-- (int)play:(NSError**)error 
+- (int)play:(NSError**)error
 {
     if (isPlaying)
     {
@@ -181,7 +186,8 @@ static BOOL isPlaying = false;
         *error = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999 userInfo:@{NSLocalizedDescriptionKey:@"-1;;Unable to run the script. Another script is currently running.\r\n"}];
         return -1;
     }
-   [self runScript:error];
+    _completedRuns = 0;
+    [self runScript:error];
 }
 
 
@@ -286,6 +292,7 @@ static BOOL isPlaying = false;
 -(void) playHasStopped
 {
     NSLog(@"com.zjx.springboard: script has finished");
+    _completedRuns++;
 
     // check whether need to replay
     if (repeatTime != 0)

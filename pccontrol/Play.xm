@@ -77,16 +77,16 @@ BOOL isScriptPlaying()
 void playHasStoppedCallBack()
 {
     NSString *bundlePath = [scriptPlayer getCurrentBundlePath];
-    NSString *scriptName = bundlePath ? [[bundlePath lastPathComponent] stringByDeletingPathExtension] : @"Unknown";
+    NSString *scriptName = (bundlePath.length > 0) ? [[bundlePath lastPathComponent] stringByDeletingPathExtension] : @"Unknown";
+    int completedRuns = [scriptPlayer getCompletedRuns];
 
     NSDictionary *settings = nil;
     if ([[NSFileManager defaultManager] fileExistsAtPath:SCRIPT_PLAY_CONFIG_PATH])
         settings = [[NSDictionary alloc] initWithContentsOfFile:SCRIPT_PLAY_CONFIG_PATH];
     NSDictionary *info = settings[@"scriptPlaybackInfo"];
-    int repeats = [info[@"repeat_times"] intValue];
     float speed = info[@"speed"] ? [info[@"speed"] floatValue] : 1.0f;
 
     NSString *msg = [NSString stringWithFormat:@"Script: %@\nSpeed: %.1f×\nPlayed: %d time(s)",
-                     scriptName, speed, repeats + 1];
+                     scriptName, speed, completedRuns];
     showAlertBox(@"Script Finished", msg, 2);
 }

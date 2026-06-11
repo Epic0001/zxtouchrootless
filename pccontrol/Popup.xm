@@ -298,8 +298,7 @@ static UIView* makeSep() {
                     }]];
                     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        [[[[UIApplication sharedApplication] connectedScenes].allObjects.firstObject windows].firstObject.rootViewController
-                            presentViewController:alert animated:YES completion:nil];
+                        [_window.rootViewController presentViewController:alert animated:YES completion:nil];
                     });
                 } else {
                     // Direct play

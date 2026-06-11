@@ -83,8 +83,8 @@ void playHasStoppedCallBack()
     if ([[NSFileManager defaultManager] fileExistsAtPath:SCRIPT_PLAY_CONFIG_PATH])
         settings = [[NSDictionary alloc] initWithContentsOfFile:SCRIPT_PLAY_CONFIG_PATH];
     NSDictionary *info = settings[@"scriptPlaybackInfo"];
-    int repeats = [info[SETTINGS_KEY_REPEAT] intValue];
-    float speed = info[SETTINGS_KEY_SPEED] ? [info[SETTINGS_KEY_SPEED] floatValue] : 1.0f;
+    int repeats = [info[@"repeat_times"] intValue];
+    float speed = info[@"speed"] ? [info[@"speed"] floatValue] : 1.0f;
 
     NSString *msg = [NSString stringWithFormat:@"Script: %@\nSpeed: %.1f×\nPlayed: %d time(s)",
                      scriptName, speed, repeats + 1];

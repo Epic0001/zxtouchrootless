@@ -367,7 +367,7 @@ static BOOL isPlaying = false;
     else if (currentScriptType == 2)
     {
         // kill all python3 process
-        system2(ROOT_PATH("/usr/bin/zxtouchb") " -e \"killall -9 python3\"", NULL, NULL);
+        system2([ROOT_PATH_NS(@"/usr/bin/zxtouchb") stringByAppendingString:@" -e \"killall -9 python3\""].UTF8String, NULL, NULL);
         [self clear];
     }
     else

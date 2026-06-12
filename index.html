@@ -6,6 +6,8 @@
 <title>ZXTouch Rootless — System-Wide Touch Simulation for iOS</title>
 <meta name="description" content="ZXTouch Rootless is an open-source, system-wide iOS touch simulation & automation framework. Rootless port for Dopamine and Roothide jailbreaks, iOS 15–16.6.1.">
 <meta name="theme-color" content="#050608">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -74,6 +76,9 @@ header.nav.scrolled{background:rgba(6,8,11,.7);backdrop-filter:blur(18px) satura
 .btn-ghost{padding:13px 24px;color:var(--txt);border:1px solid var(--line2);background:rgba(255,255,255,.025)}
 .btn-ghost:hover{border-color:rgba(0,240,255,.45);background:rgba(0,240,255,.06);transform:translateY(-2px)}
 .btn-sm{padding:9px 16px;font-size:13px;border-radius:9px}
+.btn-sileo{padding:13px 24px;color:#fff;background:linear-gradient(180deg,#9b7cf7,#7c5ce0);box-shadow:0 0 0 1px rgba(155,124,247,.45),0 10px 34px -8px rgba(124,92,224,.45)}
+.btn-sileo:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(155,124,247,.65),0 18px 50px -8px rgba(124,92,224,.55)}
+.repo-url{display:inline-flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--cy);background:rgba(0,240,255,.06);border:1px solid rgba(0,240,255,.22);border-radius:10px;padding:10px 14px;word-break:break-all}
 .tag{font-family:"JetBrains Mono",monospace;font-size:11px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);color:var(--mut);background:rgba(255,255,255,.025);white-space:nowrap}
 
 /* mobile drawer */
@@ -227,6 +232,7 @@ pre.code{margin:0;padding:18px 20px;font-family:"JetBrains Mono",monospace;font-
     <div>
       <div class="flex flex-wrap items-center gap-2.5 mb-7" data-hero-fade>
         <span class="tag" style="border-color:rgba(0,240,255,.3);color:var(--cy)"><span class="inline-block w-1.5 h-1.5 rounded-full mr-2 align-middle" style="background:var(--cy)"></span>open source · rootless</span>
+        <span class="tag" style="border-color:rgba(155,124,247,.35);color:#b9a3ff">Sileo repo available</span>
         <span class="tag">Dopamine · Roothide · iOS 15–16.6.1</span>
       </div>
       <h1 class="h-display mb-7" style="font-size:clamp(2.4rem,6.5vw,4.7rem)">
@@ -237,8 +243,12 @@ pre.code{margin:0;padding:18px 20px;font-family:"JetBrains Mono",monospace;font-
         <b class="text-white font-semibold">ZXTouch Rootless</b> is an open-source framework that simulates touch events at the <span class="text-white">system level</span> — no per-app injection. Script it from any language over a socket, replay recorded gestures, match images, and read the screen with OCR. Now fully ported to rootless &amp; roothide jailbreaks.
       </p>
       <div class="flex flex-wrap items-center gap-3.5 mb-10" data-hero-fade>
-        <a href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener" class="btn btn-primary">
-          Install from Releases
+        <a href="sileo://source/https://epic0001.github.io/zxtouchrootless/" class="btn btn-sileo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Add to Sileo
+        </a>
+        <a href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener" class="btn btn-ghost">
+          Download .deb
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2v9m0 0L4.5 7.5M8 11l3.5-3.5M2.5 13.5h11"/></svg>
         </a>
         <a href="#docs" class="btn btn-ghost">Read the Docs</a>
@@ -611,25 +621,29 @@ pre.code{margin:0;padding:18px 20px;font-family:"JetBrains Mono",monospace;font-
     <div data-reveal>
       <span class="eyebrow mb-5">Installation</span>
       <h2 class="h-display mb-5" style="font-size:clamp(2rem,4.6vw,3rem)">Two minutes to <span class="grad-text serif">first touch.</span></h2>
-      <p style="color:var(--mut);font-size:15px" class="leading-relaxed mb-8">Grab the right <span class="text-white" style="font-family:'JetBrains Mono';font-size:13px">.deb</span> for your jailbreak from GitHub Releases (or a fresh build from Actions), install, respring. Done.</p>
+      <p style="color:var(--mut);font-size:15px" class="leading-relaxed mb-6">Install from the <span class="text-white">Sileo repo</span> (recommended) or grab a <span class="text-white" style="font-family:'JetBrains Mono';font-size:13px">.deb</span> from GitHub Releases. The repo ships both rootless and roothide builds.</p>
+      <div class="repo-url mb-6">https://epic0001.github.io/zxtouchrootless/</div>
+      <div class="flex flex-wrap gap-3 mb-8">
+        <a href="sileo://source/https://epic0001.github.io/zxtouchrootless/" class="btn btn-sileo btn-sm">Add to Sileo</a>
+        <a href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Download .deb</a>
+      </div>
       <div class="flex flex-wrap gap-2 mb-8">
         <button class="pill-tab active" data-tab="dopamine">DOPAMINE (rootless)</button>
         <button class="pill-tab" data-tab="roothide">ROOTHIDE / SEROTONIN</button>
       </div>
-      <a href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener" class="btn btn-primary">Download .deb from Releases</a>
     </div>
     <div data-reveal>
       <div data-tabpane="dopamine" class="space-y-7">
-        <div class="step" data-n="01"><h4 class="font-semibold text-[15px] mb-1.5">Download the rootless package</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">From <a style="color:var(--cy)" class="hover:underline" href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener">Releases</a>, grab the file ending in <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">_rootless.deb</span> (built for Dopamine on iOS 16.4.1 / 16.6.1).</p></div>
-        <div class="step" data-n="02"><h4 class="font-semibold text-[15px] mb-1.5">Install &amp; respring</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed mb-3">Via Sileo/Zebra, or over SSH / NewTerm:</p>
+        <div class="step" data-n="01"><h4 class="font-semibold text-[15px] mb-1.5">Add the repo in Sileo</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Tap <span class="text-white">Add to Sileo</span> above, or in Sileo go to Sources → + and add <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">https://epic0001.github.io/zxtouchrootless/</span>. Alternatively, download <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">_rootless.deb</span> from <a style="color:var(--cy)" class="hover:underline" href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener">Releases</a>.</p></div>
+        <div class="step" data-n="02"><h4 class="font-semibold text-[15px] mb-1.5">Install &amp; respring</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed mb-3">In Sileo, install <span class="text-white">ZXTouch</span> (rootless build), or over SSH / NewTerm:</p>
           <div class="code-window"><div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">terminal</span><button class="copy-btn" data-copy>COPY</button></div><pre class="code"><span class="tk-c">$</span> <span class="tk-f">dpkg</span> <span class="tk-o">-i</span> zxtouch_*_rootless.deb
 <span class="tk-c">$</span> <span class="tk-f">killall</span> <span class="tk-o">-9</span> SpringBoard</pre></div></div>
         <div class="step" data-n="03"><h4 class="font-semibold text-[15px] mb-1.5">Install Python 3</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Add the <span class="text-white">Procursus</span> repo and install <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">python3</span> — required to run scripts on-device.</p></div>
         <div class="step" data-n="04"><h4 class="font-semibold text-[15px] mb-1.5">Verify</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Double-click volume-down — the floating panel appears. The daemon is now listening on <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">127.0.0.1:6000</span>.</p></div>
       </div>
       <div data-tabpane="roothide" class="space-y-7 hidden">
-        <div class="step" data-n="01"><h4 class="font-semibold text-[15px] mb-1.5">Download the roothide package</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">From <a style="color:var(--cy)" class="hover:underline" href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener">Releases</a>, grab the file ending in <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">_roothide.deb</span> (built for Roothide / Serotonin on iOS 15.8 / 16.6.1).</p></div>
-        <div class="step" data-n="02"><h4 class="font-semibold text-[15px] mb-1.5">Install &amp; respring</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed mb-3">Via your package manager or a terminal:</p>
+        <div class="step" data-n="01"><h4 class="font-semibold text-[15px] mb-1.5">Add the repo in Sileo</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Tap <span class="text-white">Add to Sileo</span> above, or add <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">https://epic0001.github.io/zxtouchrootless/</span> manually. Alternatively, download <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">_roothide.deb</span> from <a style="color:var(--cy)" class="hover:underline" href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener">Releases</a>.</p></div>
+        <div class="step" data-n="02"><h4 class="font-semibold text-[15px] mb-1.5">Install &amp; respring</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed mb-3">In Sileo, install <span class="text-white">ZXTouch (Roothide)</span>, or via terminal:</p>
           <div class="code-window"><div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">terminal</span><button class="copy-btn" data-copy>COPY</button></div><pre class="code"><span class="tk-c">$</span> <span class="tk-f">dpkg</span> <span class="tk-o">-i</span> zxtouch_*_roothide.deb
 <span class="tk-c">$</span> <span class="tk-f">killall</span> <span class="tk-o">-9</span> SpringBoard</pre></div></div>
         <div class="step" data-n="03"><h4 class="font-semibold text-[15px] mb-1.5">Install Python 3</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Install <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">python3</span> from the Procursus repo to run scripts on-device.</p></div>
@@ -687,6 +701,7 @@ pre.code{margin:0;padding:18px 20px;font-family:"JetBrains Mono",monospace;font-
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-14 gap-y-3">
         <div class="space-y-3 flex flex-col"><span style="font-family:'JetBrains Mono';font-size:10px;letter-spacing:.2em;color:var(--dim)" class="mb-1">PROJECT</span>
           <a class="footer-link" href="https://github.com/Epic0001/zxtouchrootless" target="_blank" rel="noopener">Repository</a>
+          <a class="footer-link" href="sileo://source/https://epic0001.github.io/zxtouchrootless/">Sileo Repo</a>
           <a class="footer-link" href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener">Releases</a>
           <a class="footer-link" href="https://github.com/Epic0001/zxtouchrootless/actions" target="_blank" rel="noopener">CI Builds</a>
           <a class="footer-link" href="https://github.com/Epic0001/zxtouchrootless/issues" target="_blank" rel="noopener">Issues</a></div>

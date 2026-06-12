@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="ZXTouch">
+  <rect width="32" height="32" rx="9" fill="#050608"/>
+  <rect x="2" y="2" width="28" height="28" rx="7" fill="none" stroke="#00f0ff" stroke-opacity=".75" stroke-width="1.5"/>
+  <circle cx="16" cy="16" r="4" fill="#00f0ff"/>
+  <circle cx="16" cy="16" r="9" fill="none" stroke="#00f0ff" stroke-opacity=".35" stroke-width="1.2"/>
+</svg>

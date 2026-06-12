@@ -1,22 +1,34 @@
 # ZXTouch Rootless
 
-**iOS 16 Rootless (Dopamine) port by [Epic0001](https://github.com/Epic0001/zxtouchrootless)**
+**iOS 16 Rootless (Dopamine) + Roothide port by [Epic0001](https://github.com/Epic0001/zxtouchrootless)**
 
 A **system wide** touch event simulation library for iOS. Simulate touches, run scripts, and automate your device — system level, no app injection required.
 
-> Forked from [IOS13-SimulateTouch](https://github.com/xuan32546/IOS13-SimulateTouch) by xuan32546. This fork adds full **iOS 16 rootless (Dopamine)** support.
+> Forked from [IOS13-SimulateTouch](https://github.com/xuan32546/IOS13-SimulateTouch) by xuan32546. This fork adds full **iOS 15–16 rootless (Dopamine) and roothide (Serotonin)** support.
 
 Discord: https://discord.gg/acSXfyz
 
 ---
 
+## Tested Compatibility
+
+| Jailbreak | iOS Version | Status |
+|-----------|-------------|--------|
+| Dopamine (rootless) | 16.4.1 | ✅ Working |
+| Roothide / Serotonin | 15.8 | ✅ Working |
+
+---
+
 ## What's New in This Fork
 
-- **iOS 16 rootless (Dopamine)** — installs under `/var/jb/`, compatible with ElleKit
+- **iOS 15–16 rootless (Dopamine)** — installs under `/var/jb/`, compatible with ElleKit
+- **Roothide / Serotonin support** — native `iphoneos-arm64e` build with proper dynamic path resolution
+- **image_match now working** — reimplemented using `Accelerate.framework` (no OpenCV required, zero added size)
+- **iOS Shortcuts integration** — all ZXTouch actions available as Shortcuts actions
 - **Rebuilt panel UI** — floating script panel with ⚙️ settings popup (repeat / speed / interval), dark mode, orientation-aware layout
 - **Dark mode** — toggle in the app for both the app UI and the panel
 - **Touch indicator coordinates toggle** — show or hide (x, y) labels per finger
-- **Python scripts fully working** — fixed `/bin/sh` rootless path, output logging, socket handling
+- **Python scripts fully working** — auto-detects Python 3.9/3.10/3.11, fixes broken symlinks, copies module to correct site-packages
 - **Color picker & color searcher re-enabled** — reimplemented in pure CoreGraphics
 - **OCR** working via Vision framework
 - **Volume-down stop** working for Python scripts
@@ -26,9 +38,15 @@ Discord: https://discord.gg/acSXfyz
 
 ## Requirements
 
-- iOS 16.x (tested on 16.6.1)
+### Dopamine (rootless)
+- iOS 15.0 – 16.6.1
 - [Dopamine](https://ellekit.space/dopamine/) jailbreak
-- Python 3 from Procursus repo (for `.py` scripts)
+- Python 3 from Procursus repo (for `.py` scripts) — add `https://apt.procurs.us`
+
+### Roothide / Serotonin
+- iOS 15.0 – 16.6.1
+- [Serotonin](https://github.com/roothide/Serotonin) or roothide-compatible jailbreak
+- Python 3 from Procursus repo (for `.py` scripts) — add `https://apt.procurs.us`
 
 ---
 
@@ -36,17 +54,17 @@ Discord: https://discord.gg/acSXfyz
 
 ### Through GitHub Releases:
 1. Download the latest `.deb` from [Releases](https://github.com/Epic0001/zxtouchrootless/releases)
-2. Copy the `.deb` to your iOS device (AirDrop, Filza, or SSH)
-3. Install via Filza or SSH:
+   - `*_rootless.deb` → Dopamine
+   - `*_roothide.deb` → Roothide / Serotonin
+2. Install via Filza or SSH:
 ```sh
-dpkg -i com.zjx.ioscontrol_0.1.0_iphoneos-arm64.deb
-killall -9 SpringBoard
+dpkg -i <file>.deb && killall -9 SpringBoard
 ```
 
 ### Through GitHub Actions (latest build):
 1. Go to [Actions](https://github.com/Epic0001/zxtouchrootless/actions)
 2. Open the latest successful run
-3. Download the `ZXTouch-rootless-deb` artifact
+3. Download the `ZXTouch-rootless-deb` or `ZXTouch-roothide-deb` artifact
 
 ---
 
@@ -77,12 +95,14 @@ Demo #6: [Color Picker](https://youtu.be/tserB05_B9E)
    - System-level simulation (does not inject into any app process)
    - Touch recording and playback
 2. **GUI Application**
-3. **Others**
+3. **iOS Shortcuts Integration** — all actions available as Shortcuts actions
+4. **Others**
    - Bring application to foreground
    - System-wide alert box
    - Shell command execution
    - Color picker — get pixel RGB from screen
    - Color searcher — find a color in a screen region
+   - Image matching — find a template image on screen (Accelerate.framework, no OpenCV)
    - Device info and battery info
    - Toast notifications
    - OCR (text recognition)
@@ -124,24 +144,24 @@ device = zxtouch("127.0.0.1")  # use device IP for remote control
 
 ## Instance Methods
 
-### API Status on iOS 16
+### API Status on iOS 15–16
 
-| Method | iOS 16 Status |
-|--------|--------------|
+| Method | Status |
+|--------|--------|
 | `touch` / `touch_with_list` | ✅ Working |
 | `switch_to_app` | ✅ Working |
 | `show_alert_box` | ✅ Working |
 | `run_shell_command` | ✅ Working |
 | `show_toast` | ✅ Working |
 | `pick_color` | ✅ Working |
-| `find_color` | ✅ Working |
+| `search_color` | ✅ Working |
 | `accurate_usleep` | ✅ Working |
 | `play_script` / `force_stop_script_play` | ✅ Working |
 | `get_screen_size` / `get_screen_orientation` / `get_screen_scale` | ✅ Working |
 | `get_device_info` / `get_battery_info` | ✅ Working |
 | `start_touch_recording` / `stop_touch_recording` | ✅ Working |
 | `ocr` / `get_supported_ocr_languages` | ✅ Working |
-| `image_match` | ❌ Requires OpenCV (not bundled) |
+| `image_match` | ✅ Working (Accelerate.framework, no OpenCV) |
 | `insert_text` / `show_keyboard` / `hide_keyboard` / `move_cursor` | ❌ Requires process injection |
 
 ---
@@ -217,16 +237,6 @@ def switch_to_app(bundle_identifier):
 	"""
 ```
 
-**Code Example**
-
-```python
-from zxtouch.client import zxtouch
-
-device = zxtouch("127.0.0.1")
-device.switch_to_app("com.apple.springboard")  # go to home screen
-device.disconnect()
-```
-
 ---
 
 ## Show Alert Box
@@ -243,16 +253,6 @@ def show_alert_box(title, content, duration):
     Returns:
         Result tuple (success, error_or_empty)
     """
-```
-
-**Code Example**
-
-```python
-from zxtouch.client import zxtouch
-
-device = zxtouch("127.0.0.1")
-device.show_alert_box("Alert", "This is a system-wide alert box that lasts for 3 seconds", 3)
-device.disconnect()
 ```
 
 ---
@@ -275,23 +275,23 @@ def run_shell_command(command):
 
 ## Image Matching
 
-> ⚠️ Not available on iOS 16 rootless (requires OpenCV which is not bundled)
-
 ```python
 def image_match(template_path, acceptable_value=0.8, max_try_times=4, scaleRation=0.8):
-    """Match screen against a template image
+    """Match screen against a template image using normalized cross-correlation
 	
     Args:
     	template_path: absolute path to template image on device
     	acceptable_value: similarity threshold (0-1)
     	scaleRation: scale factor per retry attempt
-    	max_try_times: max number of retries
+    	max_try_times: max number of scale variants to try
         
     Returns:
         Result tuple. On success, result[1] is a dict: {"x", "y", "width", "height"}
-        If width and height are both 0, no match was found.
+        If no match found, returns (False, error_message)
     """
 ```
+
+> Implemented using `Accelerate.framework` — no OpenCV required.
 
 ---
 
@@ -312,26 +312,6 @@ def show_toast(toast_type, content, duration, position=0, fontSize=0):
 	"""
 ```
 
-**Code Example**
-
-```python
-from zxtouch.client import zxtouch
-from zxtouch.toasttypes import *
-import time
-
-device = zxtouch("127.0.0.1")
-device.show_toast(TOAST_SUCCESS, "Success!", 1.5)
-time.sleep(1.5)
-device.show_toast(TOAST_ERROR, "Error!", 1.5)
-time.sleep(1.5)
-device.show_toast(TOAST_WARNING, "Warning!", 1.5)
-time.sleep(1.5)
-device.show_toast(TOAST_MESSAGE, "Message", 1.5)
-time.sleep(1.5)
-device.show_toast(TOAST_ERROR, "Shown at bottom", 3, TOAST_BUTTOM)
-device.disconnect()
-```
-
 ---
 
 ## Color Picker
@@ -345,22 +325,28 @@ def pick_color(x, y):
    		y: y coordinate
 
     Returns:
-        Result tuple. On success, result[1] is {"red", "green", "blue"}
+        Result tuple. On success, result[1] is {"red", "green", "blue"} (values as strings)
     """
 ```
 
-**Code Example**
+---
+
+## Color Searcher
 
 ```python
-from zxtouch.client import zxtouch
-import time
+def search_color(region, red_min, red_max, green_min, green_max, blue_min, blue_max, pixel_to_skip=0):
+    """Search for a color in a screen region
 
-device = zxtouch("127.0.0.1")
-time.sleep(1.5)
-result = device.pick_color(100, 100)
-if result[0]:
-    print("R:", result[1]["red"], "G:", result[1]["green"], "B:", result[1]["blue"])
-device.disconnect()
+    Args:
+        region: (x, y, width, height) tuple
+        red_min/red_max: red channel range (0-255)
+        green_min/green_max: green channel range (0-255)
+        blue_min/blue_max: blue channel range (0-255)
+        pixel_to_skip: pixels to skip between checks (0 = check every pixel)
+
+    Returns:
+        Result tuple. On success, result[1] is {"x", "y", "red", "green", "blue"}
+    """
 ```
 
 ---
@@ -374,70 +360,6 @@ def accurate_usleep(microseconds):
     Args:
     	microseconds: time to sleep in microseconds
         
-    Returns:
-        Result tuple (success, error_or_empty)
-    """
-```
-
----
-
-## Hide Keyboard
-
-```python
-def hide_keyboard():
-    """Hide the on-screen keyboard
-    
-    Returns:
-        Result tuple (success, error_or_empty)
-    """
-```
-
----
-
-## Show Keyboard
-
-```python
-def show_keyboard():
-    """Show the on-screen keyboard
-    
-    Returns:
-        Result tuple (success, error_or_empty)
-    """
-```
-
----
-
-## Text Input
-
-> ⚠️ Not available on iOS 16 rootless (requires process injection into front app)
-
-Insert text into the current text field. Use `"\b"` to delete a character.
-
-```python
-def insert_text(text):
-    """Insert text into the focused text field
-    
-    Args:
-    	text: text to insert (\b = backspace)
-    	        
-    Returns:
-        Result tuple (success, error_or_empty)
-    """
-```
-
----
-
-## Move Cursor
-
-> ⚠️ Not available on iOS 16 rootless
-
-```python
-def move_cursor(offset):
-    """Move the text cursor
-	
-    Args:
-		offset: positions to move (negative = left, positive = right)
-		    	        
     Returns:
         Result tuple (success, error_or_empty)
     """
@@ -606,7 +528,7 @@ def get_supported_ocr_languages(self, recognition_level):
 
 ## Building From Source
 
-Every push to `main` triggers a GitHub Actions build — Xcode compiles the app on a macOS runner, Theos builds the tweak, and the `.deb` is uploaded as an artifact. **No Mac required.**
+Every push to `main` triggers a GitHub Actions build — Xcode compiles the app on a macOS runner, Theos builds the tweak, and both `.deb` files are uploaded as artifacts. **No Mac required.**
 
 See [`.github/workflows/build.yml`](.github/workflows/build.yml).
 
@@ -616,5 +538,5 @@ See [`.github/workflows/build.yml`](.github/workflows/build.yml).
 
 | | |
 |--|--|
-| **iOS 16 rootless port** | [Epic0001](https://github.com/Epic0001) |
+| **iOS 15–16 rootless + roothide port** | [Epic0001](https://github.com/Epic0001) |
 | **Original ZXTouch** | [xuan32546](https://github.com/xuan32546) |

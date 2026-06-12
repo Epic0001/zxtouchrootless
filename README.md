@@ -396,6 +396,71 @@ def force_stop_script_play():
 
 ---
 
+## Hide Keyboard
+
+If the keyboard is showing, hide it.
+
+```python
+def hide_keyboard():
+    """Hide the keyboard
+
+    Returns:
+        Result tuple (success, error_or_empty)
+    """
+```
+
+---
+
+## Show Keyboard
+
+If the keyboard is hidden, show it.
+
+```python
+def show_keyboard():
+    """Show the keyboard
+
+    Returns:
+        Result tuple (success, error_or_empty)
+    """
+```
+
+---
+
+## Text Input
+
+Insert text into the current text field. Use `"\b"` to delete a character.
+
+```python
+def insert_text(text):
+    """Insert text into the focused text field
+
+    Args:
+        text: text to insert (\b = backspace/delete)
+
+    Returns:
+        Result tuple (success, error_or_empty)
+    """
+```
+
+---
+
+## Move Cursor
+
+```python
+def move_cursor(offset):
+    """Move the text cursor
+
+    Args:
+        offset: relative positions to move.
+                Negative = move left, positive = move right.
+
+    Returns:
+        Result tuple (success, error_or_empty)
+    """
+```
+
+---
+
 ## Get Screen Size
 
 ```python

@@ -48,24 +48,21 @@
 
     - (id)initWithFrame:(CGRect)arg1 forCustomInputView:(UIView*)view
     {
-		NSDistributedNotificationCenter *center = [NSDistributedNotificationCenter defaultCenter];
-		[center addObserver: self
-					selector: @selector(handleKeyboardNotification:)
-					name: @"com.zjx.zxtouch.keyboardcontrol"
-					object: nil];
-
-		//NSLog(@"com.zjx.appdelegate: UIKeyboardImpl instance allocated");
+        // Don't register in SpringBoard — keyboard commands are sent FROM SpringBoard, not received
+        if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
+            [[NSDistributedNotificationCenter defaultCenter]
+                addObserver:self selector:@selector(handleKeyboardNotification:)
+                name:@"com.zjx.zxtouch.keyboardcontrol" object:nil];
+        }
 		return %orig;
     }
 
 	- (id)initWithFrame:(CGRect)arg1 {
-		NSDistributedNotificationCenter *center = [NSDistributedNotificationCenter defaultCenter];
-		[center addObserver: self
-					selector: @selector(handleKeyboardNotification:)
-					name: @"com.zjx.zxtouch.keyboardcontrol"
-					object: nil];
-
-		//NSLog(@"com.zjx.appdelegate: UIKeyboardImpl instance allocated");
+        if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
+            [[NSDistributedNotificationCenter defaultCenter]
+                addObserver:self selector:@selector(handleKeyboardNotification:)
+                name:@"com.zjx.zxtouch.keyboardcontrol" object:nil];
+        }
 		return %orig;
 	}
 
@@ -83,48 +80,45 @@
         int taskId = [data[@"task_id"] intValue];
 		if (taskId == INSERT_TEXT)
 		{
+            NSString *content = data[@"task_content"] ?: @"";
             dispatch_async(dispatch_get_main_queue(), ^{
-                [self insertText:data[@"task_content"]];
-                NSLog(@"com.zjx.appdelegate: insert text: %@", data[@"task_content"]);
+                if ([self respondsToSelector:@selector(insertText:)])
+                    [self insertText:content];
             });
 		}
         else if (taskId == VIRTUAL_KEYBOARD)
         {
             int status = [data[@"task_content"] intValue];
-            if (status == VIRTUAL_KEYBOARD_HIDE)
-            {
-                [self hideKeyboard];
-                NSLog(@"com.zjx.appdelegate: hide keyboard");
-            }
-            else if (status == VIRTUAL_KEYBOARD_SHOW)
-            {
-                [self showKeyboard];
-                NSLog(@"com.zjx.appdelegate: show keyboard");
-            }
-            else
-            {
-                NSLog(@"com.zjx.appdelegate: task id is virtual_keyboard but unknown task content. Task content: %d", status);
-            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (status == VIRTUAL_KEYBOARD_HIDE && [self respondsToSelector:@selector(hideKeyboard)])
+                    [self hideKeyboard];
+                else if (status == VIRTUAL_KEYBOARD_SHOW && [self respondsToSelector:@selector(showKeyboard)])
+                    [self showKeyboard];
+            });
         }
         else if (taskId == MOVE_CURSOR)
         {
             long long moveAmount = [data[@"task_content"] longLongValue];
-            [self moveCursorByAmount:moveAmount];
-            NSLog(@"com.zjx.appdelegate: move cursor by amount: %lld", moveAmount);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if ([self respondsToSelector:@selector(moveCursorByAmount:)])
+                    [self moveCursorByAmount:moveAmount];
+            });
         }
         else if (taskId == DELETE_CHARACTER)
         {
-            int numOfCharacterToDel = [data[@"task_content"] intValue];
-            for (int i = 0; i < numOfCharacterToDel; i++)
-            {
-                [self deleteBackward];
-            }
-            NSLog(@"com.zjx.appdelegate: delete characters by amount: %d", numOfCharacterToDel);
+            int n = [data[@"task_content"] intValue];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if ([self respondsToSelector:@selector(deleteBackward)]) {
+                    for (int i = 0; i < n; i++) [self deleteBackward];
+                }
+            });
         }
         else if (taskId == PASTE_FROM_CLIPBOARD)
         {
-            UIPasteboard *pb = [UIPasteboard generalPasteboard];
-            [self insertText:[pb string]];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if ([self respondsToSelector:@selector(insertText:)])
+                    [self insertText:[UIPasteboard generalPasteboard].string ?: @""];
+            });
         }
 	}
 

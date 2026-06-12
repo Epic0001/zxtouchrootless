@@ -2,524 +2,532 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ZXTouch Rootless — System-Wide Touch Simulation for iOS</title>
 <meta name="description" content="ZXTouch Rootless is an open-source, system-wide iOS touch simulation & automation framework. Rootless port for Dopamine and Roothide jailbreaks, iOS 15–16.6.1.">
+<meta name="theme-color" content="#050608">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
-<script>
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        ink: '#050608',
-        panel: '#0a0c10',
-        line: 'rgba(255,255,255,0.07)',
-        cyan: { glow: '#00f0ff' },
-        violet: { soft: '#8b8cf0' },
-      },
-      fontFamily: {
-        sans: ['Inter','system-ui','sans-serif'],
-        serif: ['"Instrument Serif"','serif'],
-        mono: ['"JetBrains Mono"','monospace'],
-      }
-    }
-  }
-}
-</script>
 <style>
 :root{
-  --bg:#050608; --panel:#0a0c10; --panel2:#0d1016;
-  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
-  --txt:#e8eaee; --mut:#8b93a1; --dim:#5c6470;
-  --cy:#00f0ff; --cy-dim:rgba(0,240,255,.55); --vi:#8b8cf0;
+  --bg:#050608; --bg2:#070910; --panel:#0a0c12; --panel2:#0d1018;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.13);
+  --txt:#eef1f5; --mut:#949cab; --dim:#5b6371;
+  --cy:#00f0ff; --cy2:#16d8ff; --cy-dim:rgba(0,240,255,.6); --vi:#9b8cf5; --pk:#ff7ad9;
+  --maxw:1240px;
 }
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{scrollbar-color:#1c2230 var(--bg)}
-body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-::selection{background:rgba(0,240,255,.25);color:#fff}
+html.lenis,html.lenis body{height:auto}
+html.lenis.lenis-smooth{scroll-behavior:auto!important}
+html.lenis.lenis-stopped{overflow:hidden}
+html.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:contain}
+body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;margin:0}
+::selection{background:rgba(0,240,255,.28);color:#fff}
+img,svg,canvas{display:block;max-width:100%}
+a{text-decoration:none;color:inherit}
 
-/* ---------- texture & glows ---------- */
-.grid-bg{
-  background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
-  background-size:56px 56px;
-  mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 30%,transparent 75%);
-  -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 30%,transparent 75%);
-}
-.glow-orb{position:absolute;border-radius:50%;filter:blur(110px);pointer-events:none}
-.noise::after{
-  content:"";position:fixed;inset:0;z-index:90;pointer-events:none;opacity:.35;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
-}
+/* ───── progress bar ───── */
+.scroll-bar{position:fixed;top:0;left:0;height:2px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 0 12px var(--cy);transform-origin:left}
 
-/* ---------- type ---------- */
-.serif-accent{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;letter-spacing:-.01em;
-  background:linear-gradient(100deg,var(--cy) 10%,var(--vi) 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
-.eyebrow{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--cy-dim);display:inline-flex;align-items:center;gap:10px}
-.eyebrow::before{content:"";width:24px;height:1px;background:linear-gradient(90deg,var(--cy),transparent)}
-.h-display{font-weight:600;letter-spacing:-.035em;line-height:1.02}
-.reveal-line{display:block;overflow:hidden}
+/* ───── aurora / texture ───── */
+.aurora{position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden}
+.aurora i{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;mix-blend-mode:screen}
+.aurora .a1{width:55vw;height:55vw;top:-15vw;right:-10vw;background:radial-gradient(circle,rgba(0,240,255,.5),transparent 65%);animation:drift1 22s ease-in-out infinite}
+.aurora .a2{width:50vw;height:50vw;top:30vh;left:-15vw;background:radial-gradient(circle,rgba(155,140,245,.42),transparent 65%);animation:drift2 26s ease-in-out infinite}
+.aurora .a3{width:40vw;height:40vw;bottom:-10vw;right:10vw;background:radial-gradient(circle,rgba(255,122,217,.22),transparent 65%);animation:drift3 30s ease-in-out infinite}
+@keyframes drift1{50%{transform:translate(-8vw,12vh) scale(1.15)}}
+@keyframes drift2{50%{transform:translate(10vw,-8vh) scale(1.1)}}
+@keyframes drift3{50%{transform:translate(-6vw,-10vh) scale(1.2)}}
+.grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.4;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")}
+.grid-bg{position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+  background-size:54px 54px;
+  -webkit-mask-image:radial-gradient(ellipse 80% 70% at 50% 40%,#000 30%,transparent 78%);
+  mask-image:radial-gradient(ellipse 80% 70% at 50% 40%,#000 30%,transparent 78%)}
+
+/* ───── type ───── */
+.serif{font-family:"Instrument Serif",serif;font-style:italic;font-weight:400;letter-spacing:-.01em}
+.grad-text{background:linear-gradient(100deg,var(--cy) 0%,var(--vi) 55%,var(--pk) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--cy-dim);display:inline-flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:26px;height:1px;background:linear-gradient(90deg,var(--cy),transparent)}
+.h-display{font-weight:700;letter-spacing:-.04em;line-height:1.02}
+.reveal-line{display:block;overflow:hidden;padding-bottom:.06em}
 .reveal-line>span{display:block;transform:translateY(110%)}
 
-/* ---------- chrome ---------- */
-.nav-blur{background:rgba(5,6,8,.55);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);border-bottom:1px solid transparent;transition:border-color .4s}
-.nav-blur.scrolled{border-bottom-color:var(--line)}
-.btn-primary{
-  position:relative;display:inline-flex;align-items:center;gap:10px;padding:13px 26px;border-radius:10px;
-  font-size:14px;font-weight:600;color:#031316;background:linear-gradient(180deg,#5ff6ff,#00d8e8);
-  box-shadow:0 0 0 1px rgba(0,240,255,.35),0 8px 32px -8px rgba(0,240,255,.45);
-  transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s;
-}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(0,240,255,.6),0 16px 44px -8px rgba(0,240,255,.55)}
-.btn-ghost{
-  display:inline-flex;align-items:center;gap:10px;padding:13px 26px;border-radius:10px;font-size:14px;font-weight:500;
-  color:var(--txt);border:1px solid var(--line2);background:rgba(255,255,255,.02);
-  transition:border-color .25s,background .25s,transform .25s cubic-bezier(.2,.8,.2,1);
-}
-.btn-ghost:hover{border-color:rgba(0,240,255,.4);background:rgba(0,240,255,.05);transform:translateY(-2px)}
-.tag{font-family:"JetBrains Mono",monospace;font-size:11px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);color:var(--mut);background:rgba(255,255,255,.02)}
+/* ───── chrome ───── */
+.wrap{max-width:var(--maxw);margin:0 auto;padding-left:24px;padding-right:24px}
+@media(min-width:1024px){.wrap{padding-left:40px;padding-right:40px}}
+header.nav{position:fixed;top:0;inset-inline:0;z-index:50;transition:background .4s,border-color .4s,backdrop-filter .4s;border-bottom:1px solid transparent}
+header.nav.scrolled{background:rgba(6,8,11,.7);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);border-bottom-color:var(--line)}
+.nav-inner{height:64px;display:flex;align-items:center;justify-content:space-between}
+.btn{position:relative;display:inline-flex;align-items:center;gap:9px;border-radius:11px;font-size:14px;font-weight:600;transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s,border-color .25s,background .25s;cursor:pointer}
+.btn-primary{padding:13px 24px;color:#04161a;background:linear-gradient(180deg,#6df8ff,#00d6e8);box-shadow:0 0 0 1px rgba(0,240,255,.4),0 10px 34px -8px rgba(0,240,255,.5)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(0,240,255,.65),0 18px 50px -8px rgba(0,240,255,.6)}
+.btn-ghost{padding:13px 24px;color:var(--txt);border:1px solid var(--line2);background:rgba(255,255,255,.025)}
+.btn-ghost:hover{border-color:rgba(0,240,255,.45);background:rgba(0,240,255,.06);transform:translateY(-2px)}
+.btn-sm{padding:9px 16px;font-size:13px;border-radius:9px}
+.tag{font-family:"JetBrains Mono",monospace;font-size:11px;padding:5px 12px;border-radius:999px;border:1px solid var(--line2);color:var(--mut);background:rgba(255,255,255,.025);white-space:nowrap}
 
-/* ---------- cards / spotlight ---------- */
-.card{
-  position:relative;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.012));
-  border:1px solid var(--line);border-radius:18px;overflow:hidden;
-  transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .35s;
-}
+/* mobile drawer */
+.burger{display:none;width:42px;height:42px;border-radius:10px;border:1px solid var(--line2);background:rgba(255,255,255,.03);align-items:center;justify-content:center;cursor:pointer}
+.drawer{position:fixed;inset:0;z-index:55;background:rgba(4,5,8,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  opacity:0;pointer-events:none;transition:opacity .35s;display:flex;flex-direction:column;padding:84px 28px 28px}
+.drawer.open{opacity:1;pointer-events:auto}
+.drawer a{font-size:22px;font-weight:600;letter-spacing:-.02em;padding:16px 0;border-bottom:1px solid var(--line);color:var(--txt)}
+.drawer a:active{color:var(--cy)}
+.drawer-x{position:absolute;top:14px;right:24px;width:42px;height:42px;border-radius:10px;border:1px solid var(--line2);background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center}
+
+/* ───── cards ───── */
+.card{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01));border:1px solid var(--line);border-radius:20px;overflow:hidden;transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .35s}
 .card:hover{transform:translateY(-4px);border-color:var(--line2)}
-.card .spot{position:absolute;inset:0;opacity:0;transition:opacity .4s;pointer-events:none;
-  background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(0,240,255,.08),transparent 60%)}
+.card .spot{position:absolute;inset:0;opacity:0;transition:opacity .4s;pointer-events:none;background:radial-gradient(440px circle at var(--mx,50%) var(--my,50%),rgba(0,240,255,.1),transparent 60%)}
 .card:hover .spot{opacity:1}
-.icon-chip{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(160deg,rgba(0,240,255,.12),rgba(139,140,240,.08));border:1px solid rgba(0,240,255,.18);color:var(--cy)}
+.icon-chip{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,rgba(0,240,255,.14),rgba(155,140,245,.09));border:1px solid rgba(0,240,255,.2);color:var(--cy);flex:none}
 
-/* ---------- phone ---------- */
-.phone-stage{perspective:1400px}
-.phone{
-  width:300px;height:612px;border-radius:48px;position:relative;
-  background:linear-gradient(160deg,#1a1d24,#0b0d12);
-  border:1px solid rgba(255,255,255,.14);
-  box-shadow:0 0 0 10px #07090d,0 0 0 11px rgba(255,255,255,.08),
-             0 60px 120px -30px rgba(0,0,0,.9),0 0 90px -20px rgba(0,240,255,.18);
-  transform-style:preserve-3d;will-change:transform;
+/* bento */
+.bento{display:grid;gap:16px;grid-template-columns:repeat(6,1fr)}
+.bento>*{grid-column:span 6}
+@media(min-width:680px){.bento>*{grid-column:span 3}.b-wide{grid-column:span 6}}
+@media(min-width:1024px){
+  .bento>*{grid-column:span 2}
+  .b-wide{grid-column:span 4}.b-tall{grid-row:span 2}
 }
-.phone-screen{position:absolute;inset:10px;border-radius:40px;overflow:hidden;background:radial-gradient(140% 110% at 50% 0%,#0d1420 0%,#070a10 60%)}
-.dyn-island{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:96px;height:28px;border-radius:18px;background:#000;z-index:6;border:1px solid rgba(255,255,255,.06)}
-.touch-dot{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;z-index:5;
-  background:radial-gradient(circle,rgba(0,240,255,.95) 0%,rgba(0,240,255,.25) 55%,transparent 70%);
-  box-shadow:0 0 24px 4px rgba(0,240,255,.5);opacity:0;pointer-events:none}
+
+/* ───── phone ───── */
+.phone-stage{perspective:1500px}
+.phone{width:300px;height:618px;border-radius:50px;position:relative;background:linear-gradient(160deg,#1b1e26,#0b0d12);border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 0 0 10px #07090d,0 0 0 11px rgba(255,255,255,.08),0 70px 130px -30px rgba(0,0,0,.92),0 0 110px -16px rgba(0,240,255,.22);transform-style:preserve-3d;will-change:transform}
+.phone-screen{position:absolute;inset:10px;border-radius:42px;overflow:hidden;background:radial-gradient(140% 110% at 50% 0%,#0e1622 0%,#070a10 60%)}
+.dyn-island{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:98px;height:28px;border-radius:18px;background:#000;z-index:6;border:1px solid rgba(255,255,255,.06)}
+.touch-dot{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;z-index:5;background:radial-gradient(circle,rgba(0,240,255,.95) 0%,rgba(0,240,255,.25) 55%,transparent 70%);box-shadow:0 0 26px 5px rgba(0,240,255,.5);opacity:0;pointer-events:none}
 .touch-ring{position:absolute;border-radius:50%;border:1.5px solid rgba(0,240,255,.7);z-index:4;pointer-events:none;opacity:0}
 .trail-canvas{position:absolute;inset:0;z-index:3}
-.app-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.05)}
+.app-row{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.05)}
 .app-ico{width:34px;height:34px;border-radius:9px;flex:none}
 .skel{height:8px;border-radius:4px;background:rgba(255,255,255,.1)}
-.status-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;z-index:6;font-family:"JetBrains Mono",monospace;font-size:9.5px;
-  letter-spacing:.12em;color:var(--cy);background:rgba(0,20,24,.8);border:1px solid rgba(0,240,255,.3);border-radius:999px;padding:6px 14px;
-  display:flex;align-items:center;gap:7px;backdrop-filter:blur(6px)}
+.status-pill{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;z-index:6;font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.12em;color:var(--cy);background:rgba(0,20,24,.82);border:1px solid rgba(0,240,255,.3);border-radius:999px;padding:6px 14px;display:flex;align-items:center;gap:7px;backdrop-filter:blur(6px)}
 .status-pill .pulse{width:6px;height:6px;border-radius:50%;background:var(--cy);animation:pulse 1.6s infinite}
 @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,240,255,.5)}50%{opacity:.5;box-shadow:0 0 0 5px rgba(0,240,255,0)}}
-.float-chip{position:absolute;font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--mut);
-  background:rgba(10,13,18,.85);border:1px solid var(--line2);border-radius:10px;padding:9px 14px;backdrop-filter:blur(8px);
-  box-shadow:0 16px 40px -12px rgba(0,0,0,.8);display:flex;align-items:center;gap:8px;white-space:nowrap}
+.float-chip{position:absolute;font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--mut);background:rgba(10,13,18,.86);border:1px solid var(--line2);border-radius:10px;padding:9px 14px;backdrop-filter:blur(8px);box-shadow:0 16px 40px -12px rgba(0,0,0,.8);display:flex;align-items:center;gap:8px;white-space:nowrap}
 .float-chip b{color:var(--cy);font-weight:500}
 
-/* ---------- code ---------- */
-.code-window{background:#08090d;border:1px solid var(--line2);border-radius:14px;overflow:hidden;
-  box-shadow:0 30px 80px -20px rgba(0,0,0,.7),0 0 60px -30px rgba(0,240,255,.15)}
-.code-head{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.015)}
+/* ───── code ───── */
+.code-window{background:rgba(7,8,12,.82);border:1px solid var(--line2);border-radius:15px;overflow:hidden;box-shadow:0 30px 80px -20px rgba(0,0,0,.7),0 0 60px -30px rgba(0,240,255,.16);backdrop-filter:blur(6px)}
+.code-head{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.018)}
 .code-head .d{width:10px;height:10px;border-radius:50%}
-.code-head .name{margin-left:8px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--dim)}
+.code-head .name{margin-left:8px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 pre.code{margin:0;padding:18px 20px;font-family:"JetBrains Mono",monospace;font-size:12.5px;line-height:1.75;overflow-x:auto;color:#c7cdd8}
 .tk-k{color:#c792ea}.tk-f{color:#7dd3fc}.tk-s{color:#9ce6b0}.tk-n{color:#f8b886}.tk-c{color:#525b69;font-style:italic}.tk-o{color:#89ddff}.tk-v{color:#e8eaee}
-.copy-btn{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.08em;color:var(--mut);border:1px solid var(--line2);
-  border-radius:7px;padding:5px 11px;margin-left:auto;cursor:pointer;background:transparent;transition:all .2s}
+.copy-btn{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.08em;color:var(--mut);border:1px solid var(--line2);border-radius:7px;padding:5px 11px;margin-left:auto;cursor:pointer;background:transparent;transition:all .2s;flex:none}
 .copy-btn:hover{color:var(--cy);border-color:rgba(0,240,255,.4)}
 .copy-btn.ok{color:#9ce6b0;border-color:rgba(156,230,176,.4)}
 
-/* ---------- docs ---------- */
+/* ───── docs ───── */
 .doc-link{display:block;padding:8px 14px;border-left:1px solid var(--line);font-size:13.5px;color:var(--mut);transition:all .2s}
 .doc-link:hover{color:var(--txt)}
-.doc-link.active{color:var(--cy);border-left-color:var(--cy)}
+.doc-link.active{color:var(--cy);border-left-color:var(--cy);background:linear-gradient(90deg,rgba(0,240,255,.06),transparent)}
 .api-table{width:100%;border-collapse:collapse;font-size:13px}
-.api-table th{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);
-  text-align:left;padding:12px 16px;border-bottom:1px solid var(--line2)}
+.api-table th{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);text-align:left;padding:12px 16px;border-bottom:1px solid var(--line2)}
 .api-table td{padding:13px 16px;border-bottom:1px solid var(--line);color:var(--mut);vertical-align:top}
 .api-table td:first-child{font-family:"JetBrains Mono",monospace;color:#7dd3fc;white-space:nowrap;font-size:12.5px}
-.api-table tr{transition:background .2s}
-.api-table tbody tr:hover{background:rgba(0,240,255,.025)}
+.api-table tbody tr{transition:background .2s}
+.api-table tbody tr:hover{background:rgba(0,240,255,.03)}
+.api-table code{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:#f8b886;background:rgba(248,184,134,.08);padding:1px 6px;border-radius:5px}
+.pill-tab{font-family:"JetBrains Mono",monospace;font-size:11.5px;letter-spacing:.06em;padding:8px 16px;border-radius:8px;color:var(--mut);border:1px solid transparent;cursor:pointer;transition:all .25s;background:transparent;white-space:nowrap}
+.pill-tab.active{color:var(--cy);border-color:rgba(0,240,255,.35);background:rgba(0,240,255,.07)}
 
-/* ---------- steps / tabs ---------- */
-.tab-btn{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.08em;padding:10px 20px;border-radius:9px;color:var(--mut);
-  border:1px solid transparent;cursor:pointer;transition:all .25s;background:transparent}
-.tab-btn.active{color:var(--cy);border-color:rgba(0,240,255,.35);background:rgba(0,240,255,.06)}
-.step{position:relative;padding-left:56px}
-.step::before{content:attr(data-n);position:absolute;left:0;top:0;width:36px;height:36px;border-radius:10px;
-  display:flex;align-items:center;justify-content:center;font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--cy);
-  border:1px solid rgba(0,240,255,.25);background:rgba(0,240,255,.05)}
+/* steps */
+.step{position:relative;padding-left:54px}
+.step::before{content:attr(data-n);position:absolute;left:0;top:0;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--cy);border:1px solid rgba(0,240,255,.25);background:rgba(0,240,255,.05)}
 .step::after{content:"";position:absolute;left:18px;top:44px;bottom:-26px;width:1px;background:linear-gradient(180deg,rgba(0,240,255,.25),transparent)}
 .step:last-child::after{display:none}
 
-/* ---------- marquee ---------- */
-.marquee{display:flex;gap:0;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
-.marquee-track{display:flex;flex:none;gap:56px;padding-right:56px;align-items:center;animation:scroll 36s linear infinite}
+/* marquee */
+.marquee{display:flex;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)}
+.marquee-track{display:flex;flex:none;gap:52px;padding-right:52px;align-items:center;animation:scroll 38s linear infinite}
 @keyframes scroll{to{transform:translateX(-100%)}}
 .mq-item{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--dim);display:flex;align-items:center;gap:14px;white-space:nowrap}
-.mq-item::after{content:"·";color:rgba(0,240,255,.4);margin-left:42px}
+.mq-item svg{color:var(--cy-dim)}
 
-/* ---------- misc ---------- */
-.section-line{height:1px;background:linear-gradient(90deg,transparent,var(--line2),transparent)}
-.stat-num{font-weight:600;letter-spacing:-.03em;background:linear-gradient(180deg,#fff,#9aa3b2);-webkit-background-clip:text;background-clip:text;color:transparent}
-.demo-thumb{aspect-ratio:16/10;border-radius:14px;position:relative;overflow:hidden;border:1px solid var(--line)}
-.demo-thumb .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
-.demo-thumb .play span{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  background:rgba(5,8,12,.65);border:1px solid rgba(0,240,255,.4);backdrop-filter:blur(6px);color:var(--cy);transition:transform .3s,box-shadow .3s}
-a:hover .demo-thumb .play span{transform:scale(1.1);box-shadow:0 0 40px -6px rgba(0,240,255,.5)}
 .footer-link{color:var(--mut);font-size:13.5px;transition:color .2s}
 .footer-link:hover{color:var(--cy)}
+.section-line{height:1px;background:linear-gradient(90deg,transparent,var(--line2),transparent)}
+.stat-num{font-weight:700;letter-spacing:-.03em;background:linear-gradient(180deg,#fff,#9aa3b2);-webkit-background-clip:text;background-clip:text;color:transparent}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
   .reveal-line>span{transform:none!important}
 }
-@media (max-width:1023px){.phone{width:260px;height:530px}}
+@media(max-width:880px){
+  .burger{display:flex}
+  .nav-links{display:none!important}
+  .nav-cta-desktop{display:none!important}
+}
+@media(max-width:1023px){.phone{width:248px;height:512px}}
 </style>
 </head>
-<body class="noise">
+<body>
+<div class="scroll-bar" id="scrollBar"></div>
+<div class="aurora"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
+<div class="grain"></div>
 
-<!-- ══════════════ NAV ══════════════ -->
-<header id="nav" class="nav-blur fixed top-0 inset-x-0 z-50">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 h-[68px] flex items-center justify-between">
+<!-- ══ NAV ══ -->
+<header class="nav" id="nav">
+  <div class="wrap nav-inner">
     <a href="#top" class="flex items-center gap-3">
-      <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-        <rect x="1" y="1" width="24" height="24" rx="7" stroke="url(#lg)" stroke-width="1.5"/>
-        <circle cx="13" cy="13" r="3.2" fill="#00f0ff"/>
-        <circle cx="13" cy="13" r="7.5" stroke="#00f0ff" stroke-opacity=".35" stroke-width="1.2"/>
-        <defs><linearGradient id="lg" x1="0" y1="0" x2="26" y2="26"><stop stop-color="#00f0ff"/><stop offset="1" stop-color="#8b8cf0"/></linearGradient></defs>
-      </svg>
-      <span class="font-semibold tracking-tight text-[15px]">ZXTouch <span class="text-[color:var(--dim)] font-normal">Rootless</span></span>
+      <svg width="28" height="28" viewBox="0 0 26 26" fill="none"><rect x="1" y="1" width="24" height="24" rx="7" stroke="url(#lg)" stroke-width="1.5"/><circle cx="13" cy="13" r="3.2" fill="#00f0ff"/><circle cx="13" cy="13" r="7.5" stroke="#00f0ff" stroke-opacity=".35" stroke-width="1.2"/><defs><linearGradient id="lg" x1="0" y1="0" x2="26" y2="26"><stop stop-color="#00f0ff"/><stop offset="1" stop-color="#9b8cf5"/></linearGradient></defs></svg>
+      <span class="font-semibold tracking-tight text-[15px]">ZXTouch <span style="color:var(--dim)" class="font-normal">Rootless</span></span>
     </a>
-    <nav class="hidden md:flex items-center gap-8 text-[13.5px] text-[color:var(--mut)]">
+    <nav class="nav-links flex items-center gap-8 text-[13.5px]" style="color:var(--mut)">
       <a href="#features" class="hover:text-white transition-colors">Features</a>
-      <a href="#demos" class="hover:text-white transition-colors">Demos</a>
-      <a href="#docs" class="hover:text-white transition-colors">Documentation</a>
+      <a href="#docs" class="hover:text-white transition-colors">Docs</a>
       <a href="#install" class="hover:text-white transition-colors">Install</a>
       <a href="#compat" class="hover:text-white transition-colors">Compatibility</a>
     </nav>
     <div class="flex items-center gap-3">
-      <a href="https://discord.gg/acSXfyz" target="_blank" rel="noopener" class="hidden sm:flex text-[color:var(--mut)] hover:text-[color:var(--cy)] transition-colors" aria-label="Discord">
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.87-.6 1.25a18.3 18.3 0 0 0-5.5 0 12.6 12.6 0 0 0-.61-1.25.08.08 0 0 0-.08-.04 19.7 19.7 0 0 0-4.88 1.52.07.07 0 0 0-.04.03C.53 9.05-.32 13.58.1 18.06c0 .02.02.04.04.06a19.9 19.9 0 0 0 6 3.03.08.08 0 0 0 .08-.03c.46-.63.87-1.3 1.22-2a.08.08 0 0 0-.04-.1 13 13 0 0 1-1.87-.9.08.08 0 0 1 0-.12l.37-.3a.07.07 0 0 1 .08 0 14.2 14.2 0 0 0 12.06 0 .07.07 0 0 1 .08 0l.37.3a.08.08 0 0 1 0 .13 12.3 12.3 0 0 1-1.87.89.08.08 0 0 0-.04.1c.36.7.77 1.37 1.22 2a.08.08 0 0 0 .08.03 19.8 19.8 0 0 0 6.02-3.03.08.08 0 0 0 .03-.06c.5-5.18-.84-9.67-3.55-13.66a.06.06 0 0 0-.03-.03zM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42s.96-2.42 2.16-2.42c1.21 0 2.18 1.1 2.16 2.42 0 1.34-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.16-1.08-2.16-2.42s.96-2.42 2.16-2.42c1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42z"/></svg>
+      <a href="https://discord.gg/acSXfyz" target="_blank" rel="noopener" class="nav-cta-desktop transition-colors" style="color:var(--mut)" aria-label="Discord" onmouseover="this.style.color='var(--cy)'" onmouseout="this.style.color='var(--mut)'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.87-.6 1.25a18.3 18.3 0 0 0-5.5 0 12.6 12.6 0 0 0-.61-1.25.08.08 0 0 0-.08-.04 19.7 19.7 0 0 0-4.88 1.52.07.07 0 0 0-.04.03C.53 9.05-.32 13.58.1 18.06c0 .02.02.04.04.06a19.9 19.9 0 0 0 6 3.03.08.08 0 0 0 .08-.03c.46-.63.87-1.3 1.22-2a.08.08 0 0 0-.04-.1 13 13 0 0 1-1.87-.9.08.08 0 0 1 0-.12l.37-.3a.07.07 0 0 1 .08 0 14.2 14.2 0 0 0 12.06 0 .07.07 0 0 1 .08 0l.37.3a.08.08 0 0 1 0 .13 12.3 12.3 0 0 1-1.87.89.08.08 0 0 0-.04.1c.36.7.77 1.37 1.22 2a.08.08 0 0 0 .08.03 19.8 19.8 0 0 0 6.02-3.03.08.08 0 0 0 .03-.06c.5-5.18-.84-9.67-3.55-13.66a.06.06 0 0 0-.03-.03zM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42s.96-2.42 2.16-2.42c1.21 0 2.18 1.1 2.16 2.42 0 1.34-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.16-1.08-2.16-2.42s.96-2.42 2.16-2.42c1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42z"/></svg>
       </a>
-      <a href="https://github.com/Epic0001/zxtouchrootless" target="_blank" rel="noopener" class="btn-ghost !py-[9px] !px-[18px] !text-[13px]">
+      <a href="https://github.com/Epic0001/zxtouchrootless" target="_blank" rel="noopener" class="nav-cta-desktop btn btn-ghost btn-sm">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
         GitHub
       </a>
+      <button class="burger" id="burger" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
   </div>
 </header>
 
-<!-- ══════════════ HERO ══════════════ -->
-<section id="top" class="relative min-h-screen flex items-center pt-[68px] overflow-hidden">
-  <canvas id="particles" class="absolute inset-0 z-0 opacity-70"></canvas>
-  <div class="grid-bg absolute inset-0 z-0"></div>
-  <div class="glow-orb w-[600px] h-[600px] -top-40 -right-40 bg-[radial-gradient(circle,rgba(0,240,255,.12),transparent_65%)]"></div>
-  <div class="glow-orb w-[500px] h-[500px] top-1/2 -left-60 bg-[radial-gradient(circle,rgba(139,140,240,.1),transparent_65%)]"></div>
+<!-- mobile drawer -->
+<div class="drawer" id="drawer">
+  <button class="drawer-x" id="drawerX" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <a href="#features" data-close>Features</a>
+  <a href="#docs" data-close>Documentation</a>
+  <a href="#examples" data-close>Examples</a>
+  <a href="#install" data-close>Install</a>
+  <a href="#compat" data-close>Compatibility</a>
+  <div class="flex gap-3 mt-8">
+    <a href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener" class="btn btn-primary flex-1 justify-center" data-close>Releases</a>
+    <a href="https://discord.gg/acSXfyz" target="_blank" rel="noopener" class="btn btn-ghost flex-1 justify-center" data-close>Discord</a>
+  </div>
+</div>
 
-  <div class="relative z-10 max-w-7xl mx-auto px-6 lg:px-10 w-full grid lg:grid-cols-[1.1fr_.9fr] gap-16 items-center py-24">
+<!-- ══ HERO ══ -->
+<section id="top" class="relative flex items-center overflow-hidden" style="min-height:100svh;padding-top:64px">
+  <canvas id="touchField" class="absolute inset-0" style="z-index:0;opacity:.9;pointer-events:none"></canvas>
+  <div class="grid-bg"></div>
+  <div class="wrap relative w-full grid lg:grid-cols-[1.08fr_.92fr] gap-12 lg:gap-10 items-center py-16 lg:py-24" style="z-index:2">
     <div>
-      <div class="flex flex-wrap items-center gap-3 mb-8" data-hero-fade>
-        <span class="tag !border-[rgba(0,240,255,.3)] !text-[color:var(--cy)] flex items-center gap-2">
-          <span class="w-1.5 h-1.5 rounded-full bg-[color:var(--cy)] animate-pulse"></span> v-rootless · open source
-        </span>
+      <div class="flex flex-wrap items-center gap-2.5 mb-7" data-hero-fade>
+        <span class="tag" style="border-color:rgba(0,240,255,.3);color:var(--cy)"><span class="inline-block w-1.5 h-1.5 rounded-full mr-2 align-middle" style="background:var(--cy)"></span>open source · rootless</span>
         <span class="tag">Dopamine · Roothide · iOS 15–16.6.1</span>
       </div>
-      <h1 class="h-display text-[clamp(2.6rem,6vw,4.6rem)] mb-7">
-        <span class="reveal-line"><span>System-wide touch</span></span>
-        <span class="reveal-line"><span><span class="serif-accent">simulation</span> for iOS.</span></span>
+      <h1 class="h-display mb-7" style="font-size:clamp(2.4rem,6.5vw,4.7rem)">
+        <span class="reveal-line"><span>Touch anything.</span></span>
+        <span class="reveal-line"><span class="grad-text serif">Automate</span> <span>everything.</span></span>
       </h1>
-      <p class="text-[color:var(--mut)] text-[16.5px] leading-relaxed max-w-[540px] mb-10" data-hero-fade>
-        ZXTouch Rootless is an open-source automation framework that simulates touch events at the system level — no app injection, no tweaks per app. Script it from <span class="text-white">any language</span> over a socket, record &amp; replay gestures, match images, and run OCR. Now fully ported to rootless jailbreaks.
+      <p class="leading-relaxed mb-9" style="color:var(--mut);font-size:clamp(15px,2.1vw,17px);max-width:540px">
+        <b class="text-white font-semibold">ZXTouch Rootless</b> is an open-source framework that simulates touch events at the <span class="text-white">system level</span> — no per-app injection. Script it from any language over a socket, replay recorded gestures, match images, and read the screen with OCR. Now fully ported to rootless &amp; roothide jailbreaks.
       </p>
-      <div class="flex flex-wrap items-center gap-4 mb-12" data-hero-fade>
-        <a href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener" class="btn-primary">
+      <div class="flex flex-wrap items-center gap-3.5 mb-10" data-hero-fade>
+        <a href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener" class="btn btn-primary">
           Install from Releases
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2v9m0 0L4.5 7.5M8 11l3.5-3.5M2.5 13.5h11"/></svg>
         </a>
-        <a href="#docs" class="btn-ghost">Browse Documentation</a>
+        <a href="#docs" class="btn btn-ghost">Read the Docs</a>
       </div>
-      <div class="code-window max-w-[540px]" data-hero-fade>
-        <div class="code-head">
-          <span class="d bg-[#ff5f57]"></span><span class="d bg-[#febc2e]"></span><span class="d bg-[#28c840]"></span>
-          <span class="name">swipe.py — connected to 127.0.0.1:6000</span>
-        </div>
-        <pre class="code" id="hero-code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.client</span> <span class="tk-k">import</span> <span class="tk-v">zxtouch</span>
-<span class="tk-v">device</span> <span class="tk-o">=</span> <span class="tk-f">zxtouch</span>(<span class="tk-s">"127.0.0.1"</span>)
-<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_DOWN</span>, <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">400</span>)
-<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_MOVE</span>, <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">600</span>)
-<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_UP</span>,   <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">600</span>)  <span class="tk-c"># ← rendered live →</span></pre>
+      <div class="flex flex-wrap items-center gap-x-7 gap-y-2.5 text-[12.5px]" style="color:var(--dim)" data-hero-fade>
+        <span class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cy)" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg> 19-finger multitouch</span>
+        <span class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cy)" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg> &lt;1ms latency</span>
+        <span class="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cy)" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg> any language</span>
       </div>
     </div>
 
     <!-- phone -->
-    <div class="phone-stage relative hidden lg:flex justify-center items-center" data-hero-fade>
+    <div class="phone-stage relative flex justify-center items-center mt-4 lg:mt-0" data-hero-fade>
       <div class="phone" id="phone">
         <div class="phone-screen">
           <div class="dyn-island"></div>
           <canvas class="trail-canvas" id="trail"></canvas>
-          <!-- fake app UI -->
-          <div class="absolute inset-x-5 top-[70px] space-y-3 z-[2]">
-            <div class="flex items-center justify-between px-1 pb-1">
-              <div class="skel w-20 !h-[12px] !bg-[rgba(255,255,255,.16)]"></div>
-              <div class="skel w-8 !h-[12px]"></div>
-            </div>
-            <div class="app-row"><div class="app-ico bg-gradient-to-br from-cyan-400/70 to-blue-600/70"></div><div class="flex-1 space-y-2"><div class="skel w-3/4"></div><div class="skel w-1/2 opacity-50"></div></div></div>
-            <div class="app-row"><div class="app-ico bg-gradient-to-br from-violet-400/70 to-purple-700/70"></div><div class="flex-1 space-y-2"><div class="skel w-2/3"></div><div class="skel w-2/5 opacity-50"></div></div></div>
-            <div class="app-row"><div class="app-ico bg-gradient-to-br from-emerald-400/60 to-teal-700/60"></div><div class="flex-1 space-y-2"><div class="skel w-4/5"></div><div class="skel w-1/3 opacity-50"></div></div></div>
-            <div class="app-row"><div class="app-ico bg-gradient-to-br from-orange-400/60 to-rose-600/60"></div><div class="flex-1 space-y-2"><div class="skel w-3/5"></div><div class="skel w-2/4 opacity-50"></div></div></div>
-            <div class="app-row opacity-70"><div class="app-ico bg-gradient-to-br from-sky-400/50 to-indigo-700/50"></div><div class="flex-1 space-y-2"><div class="skel w-2/3"></div><div class="skel w-1/4 opacity-50"></div></div></div>
+          <div class="absolute inset-x-5 top-[68px] space-y-3" style="z-index:2">
+            <div class="flex items-center justify-between px-1 pb-1"><div class="skel w-20" style="height:12px;background:rgba(255,255,255,.16)"></div><div class="skel w-8" style="height:12px"></div></div>
+            <div class="app-row"><div class="app-ico" style="background:linear-gradient(135deg,#22d3ee,#2563eb)"></div><div class="flex-1 space-y-2"><div class="skel w-3/4"></div><div class="skel w-1/2 opacity-50"></div></div></div>
+            <div class="app-row"><div class="app-ico" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)"></div><div class="flex-1 space-y-2"><div class="skel w-2/3"></div><div class="skel w-2/5 opacity-50"></div></div></div>
+            <div class="app-row"><div class="app-ico" style="background:linear-gradient(135deg,#34d399,#0d9488)"></div><div class="flex-1 space-y-2"><div class="skel w-4/5"></div><div class="skel w-1/3 opacity-50"></div></div></div>
+            <div class="app-row"><div class="app-ico" style="background:linear-gradient(135deg,#fb923c,#e11d48)"></div><div class="flex-1 space-y-2"><div class="skel w-3/5"></div><div class="skel w-2/4 opacity-50"></div></div></div>
+            <div class="app-row opacity-70"><div class="app-ico" style="background:linear-gradient(135deg,#38bdf8,#4f46e5)"></div><div class="flex-1 space-y-2"><div class="skel w-2/3"></div><div class="skel w-1/4 opacity-50"></div></div></div>
           </div>
           <div class="touch-dot" id="touchDot"></div>
           <div class="status-pill"><span class="pulse"></span> SCRIPT RUNNING · :6000</div>
         </div>
       </div>
-      <div class="float-chip" style="top:12%;left:-8%" data-float="1"><b>●</b> event: TOUCH_MOVE <b>(400, 512)</b></div>
-      <div class="float-chip" style="bottom:20%;right:-10%" data-float="2">latency <b>&lt;1 ms</b> · fingers <b>5/19</b></div>
-      <div class="float-chip" style="top:42%;right:-16%" data-float="3">image_match() <b>✓ 0.98</b></div>
-    </div>
-  </div>
-
-  <div class="absolute bottom-7 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-[color:var(--dim)]" data-hero-fade>
-    <span class="font-mono text-[10px] tracking-[.25em]">SCROLL</span>
-    <div class="w-px h-9 bg-gradient-to-b from-[rgba(0,240,255,.5)] to-transparent"></div>
-  </div>
-</section>
-
-<!-- ══════════════ MARQUEE + STATS ══════════════ -->
-<section class="relative py-10 border-y border-[color:var(--line)]">
-  <div class="marquee">
-    <div class="marquee-track">
-      <span class="mq-item">MULTITOUCH × 19</span><span class="mq-item">PYTHON SCRIPTING</span><span class="mq-item">RECORD &amp; PLAYBACK</span><span class="mq-item">IMAGE MATCHING</span><span class="mq-item">OCR</span><span class="mq-item">SHORTCUTS INTEGRATION</span><span class="mq-item">SHELL COMMANDS</span><span class="mq-item">REMOTE CONTROL</span><span class="mq-item">COLOR PICKER</span><span class="mq-item">SOCKET API · PORT 6000</span>
-    </div>
-    <div class="marquee-track" aria-hidden="true">
-      <span class="mq-item">MULTITOUCH × 19</span><span class="mq-item">PYTHON SCRIPTING</span><span class="mq-item">RECORD &amp; PLAYBACK</span><span class="mq-item">IMAGE MATCHING</span><span class="mq-item">OCR</span><span class="mq-item">SHORTCUTS INTEGRATION</span><span class="mq-item">SHELL COMMANDS</span><span class="mq-item">REMOTE CONTROL</span><span class="mq-item">COLOR PICKER</span><span class="mq-item">SOCKET API · PORT 6000</span>
+      <div class="float-chip" style="top:9%;left:-6%" data-float><b>●</b> TOUCH_MOVE <b>(400, 512)</b></div>
+      <div class="float-chip" style="bottom:17%;right:-8%" data-float>latency <b>&lt;1 ms</b> · <b>5/19</b></div>
+      <div class="float-chip" style="top:44%;right:-12%" data-float>image_match() <b>✓ 0.98</b></div>
     </div>
   </div>
 </section>
 
-<section class="max-w-7xl mx-auto px-6 lg:px-10 py-20">
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-px bg-[color:var(--line)] rounded-2xl overflow-hidden border border-[color:var(--line)]">
-    <div class="bg-[color:var(--bg)] p-8 lg:p-10" data-reveal><div class="stat-num text-4xl lg:text-5xl mb-2"><span data-count="19">0</span></div><p class="text-[color:var(--mut)] text-sm">simultaneous fingers, true system-level multitouch</p></div>
-    <div class="bg-[color:var(--bg)] p-8 lg:p-10" data-reveal><div class="stat-num text-4xl lg:text-5xl mb-2">&lt;<span data-count="1">0</span>ms</div><p class="text-[color:var(--mut)] text-sm">event latency — fast enough for live remote control</p></div>
-    <div class="bg-[color:var(--bg)] p-8 lg:p-10" data-reveal><div class="stat-num text-4xl lg:text-5xl mb-2"><span data-count="6000">0</span></div><p class="text-[color:var(--mut)] text-sm">local socket port — drive it from any language</p></div>
-    <div class="bg-[color:var(--bg)] p-8 lg:p-10" data-reveal><div class="stat-num text-4xl lg:text-5xl mb-2"><span data-count="0">0</span></div><p class="text-[color:var(--mut)] text-sm">apps injected. Zero per-app hooks, fully system-wide</p></div>
+<!-- ══ MARQUEE ══ -->
+<section class="relative py-9 border-y" style="border-color:var(--line);background:rgba(7,9,14,.5)">
+  <div class="marquee" id="mq"></div>
+</section>
+
+<!-- ══ STATS ══ -->
+<section class="wrap py-16 lg:py-20">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-px rounded-2xl overflow-hidden border" style="background:var(--line);border-color:var(--line)">
+    <div class="p-7 lg:p-9" style="background:var(--bg)" data-reveal><div class="stat-num mb-2" style="font-size:clamp(2.2rem,5vw,3rem)"><span data-count="19">0</span></div><p class="text-sm" style="color:var(--mut)">simultaneous fingers — true system multitouch</p></div>
+    <div class="p-7 lg:p-9" style="background:var(--bg)" data-reveal><div class="stat-num mb-2" style="font-size:clamp(2.2rem,5vw,3rem)">&lt;<span data-count="1">0</span>ms</div><p class="text-sm" style="color:var(--mut)">event latency — fast enough for live remote</p></div>
+    <div class="p-7 lg:p-9" style="background:var(--bg)" data-reveal><div class="stat-num mb-2" style="font-size:clamp(2.2rem,5vw,3rem)"><span data-count="6000">0</span></div><p class="text-sm" style="color:var(--mut)">socket port — drive it from any language</p></div>
+    <div class="p-7 lg:p-9" style="background:var(--bg)" data-reveal><div class="stat-num mb-2" style="font-size:clamp(2.2rem,5vw,3rem)"><span data-count="0">0</span></div><p class="text-sm" style="color:var(--mut)">apps injected — zero per-app hooks</p></div>
   </div>
 </section>
 
-<!-- ══════════════ FEATURES ══════════════ -->
-<section id="features" class="relative max-w-7xl mx-auto px-6 lg:px-10 py-24">
-  <div class="glow-orb w-[500px] h-[400px] top-0 left-1/3 bg-[radial-gradient(circle,rgba(0,240,255,.06),transparent_65%)]"></div>
-  <div class="max-w-2xl mb-16" data-reveal>
-    <span class="eyebrow mb-5 inline-flex">Capabilities</span>
-    <h2 class="h-display text-[clamp(2rem,4.4vw,3.2rem)] mb-5">Everything you need to <span class="serif-accent">automate</span> iOS.</h2>
-    <p class="text-[color:var(--mut)] text-[15.5px] leading-relaxed">One tweak, one socket, a full automation toolkit. Every capability works across the whole OS — home screen, any app, any game.</p>
+<!-- ══ FEATURES (bento) ══ -->
+<section id="features" class="wrap py-20 lg:py-28 relative">
+  <div class="max-w-2xl mb-14" data-reveal>
+    <span class="eyebrow mb-5">Capabilities</span>
+    <h2 class="h-display mb-5" style="font-size:clamp(2rem,5vw,3.3rem)">Everything you need to <span class="grad-text serif">automate</span> iOS.</h2>
+    <p style="color:var(--mut);font-size:15.5px" class="leading-relaxed">One tweak, one socket, a full automation toolkit. Every capability works across the entire OS — home screen, any app, any game.</p>
   </div>
-  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5" id="featureGrid">
-    <!-- cards injected pattern: icon, title, desc -->
-    <div class="card p-7" data-reveal><div class="spot"></div>
-      <div class="icon-chip mb-5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="9" r="2.6"/><circle cx="16" cy="14" r="2.6"/><path d="M8 11.6V18M16 11.4V5"/></svg></div>
-      <h3 class="font-semibold text-[15.5px] mb-2">True Multitouch</h3>
-      <p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Drive up to 19 simultaneous fingers with independent down / move / up phases. Pinch, rotate, and complex game gestures are first-class.</p></div>
+  <div class="bento">
+    <!-- wide tall hero feature -->
+    <div class="card b-wide b-tall p-7 lg:p-9 flex flex-col" data-reveal><div class="spot"></div>
+      <div class="icon-chip mb-6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="8" r="2.4"/><circle cx="15" cy="6" r="2.4"/><circle cx="11" cy="15" r="2.4"/><circle cx="18" cy="15" r="2.4"/><path d="M7 10.4v3M15 8.4v4M9.3 14l-.6-.4M13 14.6h2.6" opacity=".6"/></svg></div>
+      <h3 class="font-semibold text-lg mb-2.5">True system-wide multitouch</h3>
+      <p style="color:var(--mut);font-size:14px" class="leading-relaxed mb-6">Drive up to <b class="text-white">19 simultaneous fingers</b> with independent down / move / up phases. Pinch, rotate, drag and complex game gestures are first-class — batch them in a single frame with <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12.5px">touch_with_list()</code>.</p>
+      <div class="mt-auto code-window">
+        <div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">multitouch.py</span></div>
+        <pre class="code"><span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_DOWN</span>, <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">400</span>)
+<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_MOVE</span>, <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">600</span>)
+<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_UP</span>,   <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">600</span>)</pre>
+      </div>
+    </div>
     <div class="card p-7" data-reveal><div class="spot"></div>
       <div class="icon-chip mb-5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6 3.5 12 8 18M16 6l4.5 6L16 18M13 4l-2.5 16"/></svg></div>
-      <h3 class="font-semibold text-[15.5px] mb-2">Script in Any Language</h3>
-      <p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">A clean socket protocol on port 6000 plus a batteries-included Python module. If it can open a TCP connection, it can automate your device.</p></div>
+      <h3 class="font-semibold text-[15.5px] mb-2">Any language</h3>
+      <p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">A clean socket protocol on port 6000, plus a batteries-included Python module. If it can open a TCP socket, it can automate the device.</p></div>
     <div class="card p-7" data-reveal><div class="spot"></div>
       <div class="icon-chip mb-5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 3.5V1M12 23v-2.5M3.5 12H1M23 12h-2.5"/></svg></div>
-      <h3 class="font-semibold text-[15.5px] mb-2">Recording &amp; Playback</h3>
-      <p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Capture real touch sessions and replay them perfectly — from the floating panel, the Python API, or iOS Shortcuts.</p></div>
+      <h3 class="font-semibold text-[15.5px] mb-2">Record &amp; playback</h3>
+      <p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Capture real touch sessions and replay them perfectly — from the floating panel, the API, or iOS Shortcuts.</p></div>
     <div class="card p-7" data-reveal><div class="spot"></div>
       <div class="icon-chip mb-5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/><path d="M13 8h3a2 2 0 0 1 2 2v3" stroke-dasharray="2.5 2.5"/></svg></div>
-      <h3 class="font-semibold text-[15.5px] mb-2">Image Matching</h3>
-      <p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Template matching on the live screen, accelerated by Apple's Accelerate framework. Find a button, tap it — no fragile coordinates.</p></div>
+      <h3 class="font-semibold text-[15.5px] mb-2">Image matching</h3>
+      <p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Template-match on the live screen, Accelerate-framework fast. Find a button, tap it — no fragile coordinates.</p></div>
     <div class="card p-7" data-reveal><div class="spot"></div>
       <div class="icon-chip mb-5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 12h8M8 9h5M8 15h6"/></svg></div>
-      <h3 class="font-semibold text-[15.5px] mb-2">On-Device OCR</h3>
-      <p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Read text straight off the screen and branch your scripts on it. Built into the toolkit — no cloud, no screenshots leaving the device.</p></div>
+      <h3 class="font-semibold text-[15.5px] mb-2">On-device OCR</h3>
+      <p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Read text straight off the screen — multi-language, accurate or fast modes. No cloud, nothing leaves the device.</p></div>
     <div class="card p-7" data-reveal><div class="spot"></div>
       <div class="icon-chip mb-5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.1 4.9L19 9.2l-4 3.4 1.4 5.4L12 15l-4.4 3 1.4-5.4-4-3.4 4.9-1.3z" stroke-linejoin="round"/></svg></div>
-      <h3 class="font-semibold text-[15.5px] mb-2">Shortcuts Integration</h3>
-      <p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Trigger recorded scripts from iOS Shortcuts and automations — run automation on a schedule, an NFC tag, or a button press.</p></div>
+      <h3 class="font-semibold text-[15.5px] mb-2">Shortcuts integration</h3>
+      <p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Trigger recorded scripts from iOS Shortcuts &amp; automations — on a schedule, an NFC tag, or a tap.</p></div>
     <div class="card p-7" data-reveal><div class="spot"></div>
       <div class="icon-chip mb-5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 17l5-5-5-5M11 19h9"/></svg></div>
-      <h3 class="font-semibold text-[15.5px] mb-2">Shell Commands</h3>
-      <p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Execute commands as root from your scripts with <code class="font-mono text-[12px] text-[#7dd3fc]">run_shell_command()</code> — glue device state into your automation.</p></div>
+      <h3 class="font-semibold text-[15.5px] mb-2">Root shell</h3>
+      <p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Run commands as root from your scripts with <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">run_shell_command()</code> and glue device state into automation.</p></div>
+    <div class="card b-wide p-7 flex flex-col sm:flex-row gap-5 sm:items-center" data-reveal><div class="spot"></div>
+      <div class="icon-chip"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="12" cy="17.5" r="1.2" fill="currentColor" stroke="none"/><path d="M9 7h6M9 10.5h4"/></svg></div>
+      <div><h3 class="font-semibold text-[15.5px] mb-2">Floating control panel — no computer needed</h3>
+      <p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Double-click <b class="text-white">volume-down</b> anywhere in iOS to summon an on-screen panel: run saved scripts, start/stop recording, and manage settings on the go.</p></div></div>
     <div class="card p-7" data-reveal><div class="spot"></div>
       <div class="icon-chip mb-5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5c-4.5 4.5-4.5 12.5 0 17M12 3.5c4.5 4.5 4.5 12.5 0 17M3.5 12h17"/></svg></div>
-      <h3 class="font-semibold text-[15.5px] mb-2">Low-Latency Remote</h3>
-      <p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Control the device live from your computer or another device over the network — fast enough for real-time mirrored input.</p></div>
+      <h3 class="font-semibold text-[15.5px] mb-2">Low-latency remote</h3>
+      <p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Control the device live over the network — fast enough for real-time mirrored input from a computer.</p></div>
     <div class="card p-7" data-reveal><div class="spot"></div>
-      <div class="icon-chip mb-5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="12" cy="17.5" r="1.2" fill="currentColor" stroke="none"/><path d="M9 7h6M9 10.5h4"/></svg></div>
-      <h3 class="font-semibold text-[15.5px] mb-2">Floating Control Panel</h3>
-      <p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Double-click volume-down to summon an on-screen panel: run scripts, record touches, and manage settings anywhere in the OS.</p></div>
-  </div>
-  <div class="mt-5 grid sm:grid-cols-3 gap-5">
-    <div class="card p-6 flex items-center gap-4" data-reveal><div class="spot"></div><span class="font-mono text-[11px] text-[color:var(--cy)]">+</span><p class="text-[color:var(--mut)] text-[13px]">Color picker — read RGB at any pixel</p></div>
-    <div class="card p-6 flex items-center gap-4" data-reveal><div class="spot"></div><span class="font-mono text-[11px] text-[color:var(--cy)]">+</span><p class="text-[color:var(--mut)] text-[13px]">System alerts &amp; toast notifications from scripts</p></div>
-    <div class="card p-6 flex items-center gap-4" data-reveal><div class="spot"></div><span class="font-mono text-[11px] text-[color:var(--cy)]">+</span><p class="text-[color:var(--mut)] text-[13px]">Device, battery &amp; screen info APIs</p></div>
+      <div class="icon-chip mb-5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 21s-7-5-7-11a7 7 0 0 1 14 0c0 6-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg></div>
+      <h3 class="font-semibold text-[15.5px] mb-2">Color picker &amp; system UI</h3>
+      <p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Read RGB at any pixel, fire native alert boxes &amp; toasts, type into fields and move the cursor — all from a script.</p></div>
   </div>
 </section>
 
-<!-- ══════════════ DEMOS ══════════════ -->
-<section id="demos" class="relative py-24 border-t border-[color:var(--line)]">
-  <div class="glow-orb w-[600px] h-[400px] top-20 -right-40 bg-[radial-gradient(circle,rgba(139,140,240,.08),transparent_65%)]"></div>
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="flex flex-wrap items-end justify-between gap-6 mb-14" data-reveal>
-      <div class="max-w-xl">
-        <span class="eyebrow mb-5 inline-flex">Showcase</span>
-        <h2 class="h-display text-[clamp(2rem,4.4vw,3.2rem)]">See it <span class="serif-accent">in motion.</span></h2>
-      </div>
-      <a href="https://github.com/xuan32546/IOS13-SimulateTouch#demo" target="_blank" rel="noopener" class="btn-ghost !text-[13px]">All demos on GitHub →</a>
+<!-- ══ DOCS ══ -->
+<section id="docs" class="py-20 lg:py-28 border-t" style="border-color:var(--line)">
+  <div class="wrap">
+    <div class="max-w-2xl mb-12" data-reveal>
+      <span class="eyebrow mb-5">Documentation</span>
+      <h2 class="h-display mb-5" style="font-size:clamp(2rem,5vw,3.3rem)">From zero to <span class="grad-text serif">automated</span> in minutes.</h2>
+      <p style="color:var(--mut);font-size:15.5px">A complete reference for the Python client, the touch model, computer vision, and the on-device tools.</p>
     </div>
-    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-      <a href="https://github.com/xuan32546/IOS13-SimulateTouch#demo" target="_blank" rel="noopener" class="group" data-reveal>
-        <div class="demo-thumb bg-[radial-gradient(120%_120%_at_20%_0%,rgba(0,240,255,.14),transparent_55%),linear-gradient(160deg,#0c1018,#070a10)]">
-          <div class="absolute inset-0 grid-bg opacity-60"></div>
-          <div class="play"><span><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.5v9l7.5-4.5z"/></svg></span></div>
-        </div>
-        <h3 class="mt-4 font-medium text-[14.5px] group-hover:text-[color:var(--cy)] transition-colors">Low-Latency Remote Control</h3>
-        <p class="text-[color:var(--dim)] text-[12.5px] mt-1">Mirror and drive the device live from a computer.</p>
-      </a>
-      <a href="https://github.com/xuan32546/IOS13-SimulateTouch#demo" target="_blank" rel="noopener" class="group" data-reveal>
-        <div class="demo-thumb bg-[radial-gradient(120%_120%_at_80%_0%,rgba(139,140,240,.16),transparent_55%),linear-gradient(160deg,#0c0e18,#070810)]">
-          <div class="absolute inset-0 grid-bg opacity-60"></div>
-          <div class="play"><span><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.5v9l7.5-4.5z"/></svg></span></div>
-        </div>
-        <h3 class="mt-4 font-medium text-[14.5px] group-hover:text-[color:var(--cy)] transition-colors">Game Automation</h3>
-        <p class="text-[color:var(--dim)] text-[12.5px] mt-1">Scripted multitouch gameplay (PUBG demo) with image matching.</p>
-      </a>
-      <a href="https://github.com/xuan32546/IOS13-SimulateTouch#demo" target="_blank" rel="noopener" class="group" data-reveal>
-        <div class="demo-thumb bg-[radial-gradient(120%_120%_at_50%_100%,rgba(0,240,255,.1),transparent_55%),linear-gradient(160deg,#0a1014,#06090d)]">
-          <div class="absolute inset-0 grid-bg opacity-60"></div>
-          <div class="play"><span><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.5v9l7.5-4.5z"/></svg></span></div>
-        </div>
-        <h3 class="mt-4 font-medium text-[14.5px] group-hover:text-[color:var(--cy)] transition-colors">Recording &amp; Playback</h3>
-        <p class="text-[color:var(--dim)] text-[12.5px] mt-1">Record a session once, replay it forever — pixel-perfect.</p>
-      </a>
-      <a href="https://github.com/xuan32546/IOS13-SimulateTouch#demo" target="_blank" rel="noopener" class="group" data-reveal>
-        <div class="demo-thumb bg-[radial-gradient(120%_120%_at_30%_100%,rgba(139,140,240,.12),transparent_55%),linear-gradient(160deg,#0d0d16,#08080e)]">
-          <div class="absolute inset-0 grid-bg opacity-60"></div>
-          <div class="play"><span><svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.5v9l7.5-4.5z"/></svg></span></div>
-        </div>
-        <h3 class="mt-4 font-medium text-[14.5px] group-hover:text-[color:var(--cy)] transition-colors">OCR &amp; Image Match</h3>
-        <p class="text-[color:var(--dim)] text-[12.5px] mt-1">Read the screen, find targets, act on what's actually there.</p>
-      </a>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════ DOCS ══════════════ -->
-<section id="docs" class="relative py-24 border-t border-[color:var(--line)]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="max-w-2xl mb-14" data-reveal>
-      <span class="eyebrow mb-5 inline-flex">Documentation</span>
-      <h2 class="h-display text-[clamp(2rem,4.4vw,3.2rem)] mb-5">From zero to <span class="serif-accent">automated</span> in minutes.</h2>
-      <p class="text-[color:var(--mut)] text-[15.5px]">The essentials of the Python API, the socket protocol, and the on-device tools.</p>
-    </div>
-    <div class="grid lg:grid-cols-[210px_1fr] gap-12">
+    <div class="grid lg:grid-cols-[210px_1fr] gap-10 lg:gap-14">
       <aside class="hidden lg:block">
-        <nav class="sticky top-28 space-y-0.5" id="docNav">
+        <nav class="sticky top-24 space-y-0.5" id="docNav">
           <a href="#doc-quickstart" class="doc-link active">Quick start</a>
-          <a href="#doc-touch" class="doc-link">Touch events</a>
+          <a href="#doc-connect" class="doc-link">Connecting</a>
+          <a href="#doc-touch" class="doc-link">Touch model</a>
           <a href="#doc-vision" class="doc-link">Vision &amp; OCR</a>
-          <a href="#doc-panel" class="doc-link">Floating panel</a>
-          <a href="#doc-api" class="doc-link">API reference</a>
+          <a href="#doc-text" class="doc-link">Text &amp; system UI</a>
+          <a href="#doc-panel" class="doc-link">Recording &amp; panel</a>
+          <a href="#doc-api" class="doc-link">Full API reference</a>
+          <a href="#doc-constants" class="doc-link">Constants</a>
         </nav>
       </aside>
-      <div class="space-y-16 min-w-0">
+      <div class="space-y-14 min-w-0">
 
         <div id="doc-quickstart" data-reveal>
           <h3 class="font-semibold text-xl mb-3 tracking-tight">Quick start</h3>
-          <p class="text-[color:var(--mut)] text-[14.5px] leading-relaxed mb-5">Install the tweak (see <a href="#install" class="text-[color:var(--cy)] hover:underline">Installation</a>), make sure <span class="font-mono text-[13px] text-white">Python 3</span> from the Procursus repo is present, then connect to the daemon listening on port 6000. The Python module ships with the tweak.</p>
+          <p style="color:var(--mut);font-size:14.5px" class="leading-relaxed mb-5">Install the tweak (see <a href="#install" style="color:var(--cy)" class="hover:underline">Installation</a>), make sure <span class="text-white" style="font-family:'JetBrains Mono';font-size:13px">python3</span> from the Procursus repo is present, then connect to the daemon on port 6000. The <code style="color:#f8b886;font-family:'JetBrains Mono';font-size:12px">zxtouch</code> Python module ships with the tweak.</p>
           <div class="code-window">
-            <div class="code-head"><span class="d bg-[#ff5f57]"></span><span class="d bg-[#febc2e]"></span><span class="d bg-[#28c840]"></span><span class="name">quickstart.py</span><button class="copy-btn" data-copy>COPY</button></div>
+            <div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">quickstart.py</span><button class="copy-btn" data-copy>COPY</button></div>
             <pre class="code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.client</span> <span class="tk-k">import</span> <span class="tk-v">zxtouch</span>
 <span class="tk-k">from</span> <span class="tk-v">zxtouch.touchtypes</span> <span class="tk-k">import</span> <span class="tk-o">*</span>
 <span class="tk-k">import</span> <span class="tk-v">time</span>
 
-<span class="tk-v">device</span> <span class="tk-o">=</span> <span class="tk-f">zxtouch</span>(<span class="tk-s">"127.0.0.1"</span>)  <span class="tk-c"># on-device, or your iPhone's IP remotely</span>
+<span class="tk-v">device</span> <span class="tk-o">=</span> <span class="tk-f">zxtouch</span>(<span class="tk-s">"127.0.0.1"</span>)   <span class="tk-c"># on-device, or your iPhone IP for remote</span>
 
-<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_DOWN</span>, <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">400</span>)  <span class="tk-c"># finger 5 down at (400, 400)</span>
-<span class="tk-v">time</span>.<span class="tk-f">sleep</span>(<span class="tk-n">1</span>)
-<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_MOVE</span>, <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">600</span>)  <span class="tk-c"># drag down 200pt</span>
-<span class="tk-v">time</span>.<span class="tk-f">sleep</span>(<span class="tk-n">1</span>)
-<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_UP</span>, <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">600</span>)
+<span class="tk-c"># a one-finger swipe down: down → move → up</span>
+<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_DOWN</span>, <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">400</span>)
+<span class="tk-v">time</span>.<span class="tk-f">sleep</span>(<span class="tk-n">0.4</span>)
+<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_MOVE</span>, <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">600</span>)
+<span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_UP</span>,   <span class="tk-n">5</span>, <span class="tk-n">400</span>, <span class="tk-n">600</span>)
 
 <span class="tk-v">device</span>.<span class="tk-f">disconnect</span>()</pre>
           </div>
         </div>
 
+        <div id="doc-connect" data-reveal>
+          <h3 class="font-semibold text-xl mb-3 tracking-tight">Connecting</h3>
+          <p style="color:var(--mut);font-size:14.5px" class="leading-relaxed mb-4">The tweak runs a daemon listening on <span class="text-white" style="font-family:'JetBrains Mono';font-size:13px">port 6000</span>. Construct a client with the target IP — <code style="color:#9ce6b0;font-family:'JetBrains Mono';font-size:12px">"127.0.0.1"</code> when your script runs on the device itself, or the iPhone's LAN IP to drive it remotely from a computer.</p>
+          <ul class="space-y-2.5 text-[14px]" style="color:var(--mut)">
+            <li class="flex gap-3"><span style="color:var(--cy)">›</span> Every call returns a standard tuple <code style="color:#f8b886;font-family:'JetBrains Mono';font-size:12px">(success: bool, data_or_error)</code> — check the first element before trusting the second.</li>
+            <li class="flex gap-3"><span style="color:var(--cy)">›</span> Coordinates are in screen points; use <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">get_screen_size()</code> / <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">get_screen_scale()</code> to write resolution-independent scripts.</li>
+            <li class="flex gap-3"><span style="color:var(--cy)">›</span> Call <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">device.disconnect()</code> when done to close the socket cleanly.</li>
+          </ul>
+        </div>
+
         <div id="doc-touch" data-reveal>
-          <h3 class="font-semibold text-xl mb-3 tracking-tight">Touch events</h3>
-          <p class="text-[color:var(--mut)] text-[14.5px] leading-relaxed mb-5">Every touch has a <em class="text-white not-italic">type</em> (<span class="font-mono text-[12.5px] text-[#7dd3fc]">TOUCH_DOWN / TOUCH_MOVE / TOUCH_UP</span>), a <em class="text-white not-italic">finger index</em> (up to 19 concurrent), and screen coordinates. Batch multiple fingers in one frame with <span class="font-mono text-[12.5px] text-[#7dd3fc]">touch_with_list()</span> — that's how pinch and multi-finger game controls work.</p>
+          <h3 class="font-semibold text-xl mb-3 tracking-tight">Touch model</h3>
+          <p style="color:var(--mut);font-size:14.5px" class="leading-relaxed mb-5">Each touch carries a <b class="text-white">type</b> (<code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">TOUCH_DOWN / TOUCH_MOVE / TOUCH_UP</code>), a <b class="text-white">finger index</b> from <code style="color:#f8b886;font-family:'JetBrains Mono';font-size:12px">1–19</code>, and <code style="color:#f8b886;font-family:'JetBrains Mono';font-size:12px">x, y</code> coordinates. A gesture is a down, any number of moves, then an up on the same finger. For multi-finger gestures, dispatch several events in one frame with <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">touch_with_list()</code>.</p>
           <div class="code-window">
-            <div class="code-head"><span class="d bg-[#ff5f57]"></span><span class="d bg-[#febc2e]"></span><span class="d bg-[#28c840]"></span><span class="name">pinch.py</span><button class="copy-btn" data-copy>COPY</button></div>
-            <pre class="code"><span class="tk-c"># two fingers moving apart = pinch-to-zoom</span>
-<span class="tk-v">device</span>.<span class="tk-f">touch_with_list</span>([
+            <div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">pinch.py — two fingers, pinch-to-zoom</span><button class="copy-btn" data-copy>COPY</button></div>
+            <pre class="code"><span class="tk-v">device</span>.<span class="tk-f">touch_with_list</span>([
     {<span class="tk-s">"type"</span>: <span class="tk-v">TOUCH_DOWN</span>, <span class="tk-s">"finger_index"</span>: <span class="tk-n">1</span>, <span class="tk-s">"x"</span>: <span class="tk-n">350</span>, <span class="tk-s">"y"</span>: <span class="tk-n">600</span>},
     {<span class="tk-s">"type"</span>: <span class="tk-v">TOUCH_DOWN</span>, <span class="tk-s">"finger_index"</span>: <span class="tk-n">2</span>, <span class="tk-s">"x"</span>: <span class="tk-n">450</span>, <span class="tk-s">"y"</span>: <span class="tk-n">700</span>},
 ])
 <span class="tk-k">for</span> <span class="tk-v">i</span> <span class="tk-k">in</span> <span class="tk-f">range</span>(<span class="tk-n">20</span>):
     <span class="tk-v">device</span>.<span class="tk-f">touch_with_list</span>([
-        {<span class="tk-s">"type"</span>: <span class="tk-v">TOUCH_MOVE</span>, <span class="tk-s">"finger_index"</span>: <span class="tk-n">1</span>, <span class="tk-s">"x"</span>: <span class="tk-n">350</span> <span class="tk-o">-</span> <span class="tk-v">i</span><span class="tk-o">*</span><span class="tk-n">8</span>, <span class="tk-s">"y"</span>: <span class="tk-n">600</span> <span class="tk-o">-</span> <span class="tk-v">i</span><span class="tk-o">*</span><span class="tk-n">8</span>},
-        {<span class="tk-s">"type"</span>: <span class="tk-v">TOUCH_MOVE</span>, <span class="tk-s">"finger_index"</span>: <span class="tk-n">2</span>, <span class="tk-s">"x"</span>: <span class="tk-n">450</span> <span class="tk-o">+</span> <span class="tk-v">i</span><span class="tk-o">*</span><span class="tk-n">8</span>, <span class="tk-s">"y"</span>: <span class="tk-n">700</span> <span class="tk-o">+</span> <span class="tk-v">i</span><span class="tk-o">*</span><span class="tk-n">8</span>},
+        {<span class="tk-s">"type"</span>: <span class="tk-v">TOUCH_MOVE</span>, <span class="tk-s">"finger_index"</span>: <span class="tk-n">1</span>, <span class="tk-s">"x"</span>: <span class="tk-n">350</span><span class="tk-o">-</span><span class="tk-v">i</span><span class="tk-o">*</span><span class="tk-n">8</span>, <span class="tk-s">"y"</span>: <span class="tk-n">600</span><span class="tk-o">-</span><span class="tk-v">i</span><span class="tk-o">*</span><span class="tk-n">8</span>},
+        {<span class="tk-s">"type"</span>: <span class="tk-v">TOUCH_MOVE</span>, <span class="tk-s">"finger_index"</span>: <span class="tk-n">2</span>, <span class="tk-s">"x"</span>: <span class="tk-n">450</span><span class="tk-o">+</span><span class="tk-v">i</span><span class="tk-o">*</span><span class="tk-n">8</span>, <span class="tk-s">"y"</span>: <span class="tk-n">700</span><span class="tk-o">+</span><span class="tk-v">i</span><span class="tk-o">*</span><span class="tk-n">8</span>},
     ])
-    <span class="tk-v">time</span>.<span class="tk-f">sleep</span>(<span class="tk-n">0.016</span>)</pre>
+    <span class="tk-v">device</span>.<span class="tk-f">accurate_usleep</span>(<span class="tk-n">16000</span>)  <span class="tk-c"># ≈ one 60fps frame, precise</span></pre>
           </div>
         </div>
 
         <div id="doc-vision" data-reveal>
           <h3 class="font-semibold text-xl mb-3 tracking-tight">Vision &amp; OCR</h3>
-          <p class="text-[color:var(--mut)] text-[14.5px] leading-relaxed mb-5">Stop hardcoding coordinates. <span class="font-mono text-[12.5px] text-[#7dd3fc]">image_match()</span> finds a template on the live screen (Accelerate-framework fast), and <span class="font-mono text-[12.5px] text-[#7dd3fc]">ocr()</span> reads on-screen text so your scripts can react to real state.</p>
+          <p style="color:var(--mut);font-size:14.5px" class="leading-relaxed mb-5">Stop hardcoding coordinates. <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">image_match()</code> locates a template on the live screen and returns its bounding box; <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">ocr()</code> reads on-screen text so scripts react to real state. <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">pick_color()</code> samples a pixel's RGB.</p>
           <div class="code-window">
-            <div class="code-head"><span class="d bg-[#ff5f57]"></span><span class="d bg-[#febc2e]"></span><span class="d bg-[#28c840]"></span><span class="name">find_and_tap.py</span><button class="copy-btn" data-copy>COPY</button></div>
-            <pre class="code"><span class="tk-v">result</span> <span class="tk-o">=</span> <span class="tk-v">device</span>.<span class="tk-f">image_match</span>(<span class="tk-s">"/var/mobile/button.png"</span>)
-<span class="tk-k">if</span> <span class="tk-v">result</span>[<span class="tk-n">0</span>]:  <span class="tk-c"># found on screen</span>
-    <span class="tk-v">info</span> <span class="tk-o">=</span> <span class="tk-v">result</span>[<span class="tk-n">1</span>]
-    <span class="tk-v">x</span> <span class="tk-o">=</span> <span class="tk-f">float</span>(<span class="tk-v">info</span>[<span class="tk-s">"x"</span>]) <span class="tk-o">+</span> <span class="tk-f">float</span>(<span class="tk-v">info</span>[<span class="tk-s">"width"</span>])  <span class="tk-o">/</span> <span class="tk-n">2</span>
-    <span class="tk-v">y</span> <span class="tk-o">=</span> <span class="tk-f">float</span>(<span class="tk-v">info</span>[<span class="tk-s">"y"</span>]) <span class="tk-o">+</span> <span class="tk-f">float</span>(<span class="tk-v">info</span>[<span class="tk-s">"height"</span>]) <span class="tk-o">/</span> <span class="tk-n">2</span>
+            <div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">find_and_tap.py</span><button class="copy-btn" data-copy>COPY</button></div>
+            <pre class="code"><span class="tk-v">ok</span>, <span class="tk-v">m</span> <span class="tk-o">=</span> <span class="tk-v">device</span>.<span class="tk-f">image_match</span>(<span class="tk-s">"/var/mobile/button.png"</span>,
+                        <span class="tk-v">acceptable_value</span><span class="tk-o">=</span><span class="tk-n">0.8</span>, <span class="tk-v">max_try_times</span><span class="tk-o">=</span><span class="tk-n">4</span>)
+<span class="tk-k">if</span> <span class="tk-v">ok</span> <span class="tk-k">and</span> <span class="tk-f">float</span>(<span class="tk-v">m</span>[<span class="tk-s">"width"</span>]) <span class="tk-o">&gt;</span> <span class="tk-n">0</span>:        <span class="tk-c"># width==0 means no match</span>
+    <span class="tk-v">x</span> <span class="tk-o">=</span> <span class="tk-f">float</span>(<span class="tk-v">m</span>[<span class="tk-s">"x"</span>]) <span class="tk-o">+</span> <span class="tk-f">float</span>(<span class="tk-v">m</span>[<span class="tk-s">"width"</span>])  <span class="tk-o">/</span> <span class="tk-n">2</span>
+    <span class="tk-v">y</span> <span class="tk-o">=</span> <span class="tk-f">float</span>(<span class="tk-v">m</span>[<span class="tk-s">"y"</span>]) <span class="tk-o">+</span> <span class="tk-f">float</span>(<span class="tk-v">m</span>[<span class="tk-s">"height"</span>]) <span class="tk-o">/</span> <span class="tk-n">2</span>
     <span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_DOWN</span>, <span class="tk-n">1</span>, <span class="tk-v">x</span>, <span class="tk-v">y</span>)
-    <span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_UP</span>, <span class="tk-n">1</span>, <span class="tk-v">x</span>, <span class="tk-v">y</span>)</pre>
+    <span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_UP</span>, <span class="tk-n">1</span>, <span class="tk-v">x</span>, <span class="tk-v">y</span>)
+
+<span class="tk-c"># read a score region (x, y, w, h), accurate mode</span>
+<span class="tk-v">ok</span>, <span class="tk-v">lines</span> <span class="tk-o">=</span> <span class="tk-v">device</span>.<span class="tk-f">ocr</span>((<span class="tk-n">40</span>, <span class="tk-n">120</span>, <span class="tk-n">300</span>, <span class="tk-n">60</span>), <span class="tk-v">recognition_level</span><span class="tk-o">=</span><span class="tk-n">0</span>)
+<span class="tk-k">print</span>(<span class="tk-v">lines</span>)   <span class="tk-c"># → ["Score: 1240"]</span></pre>
+          </div>
+        </div>
+
+        <div id="doc-text" data-reveal>
+          <h3 class="font-semibold text-xl mb-3 tracking-tight">Text &amp; system UI</h3>
+          <p style="color:var(--mut);font-size:14.5px" class="leading-relaxed mb-5">Type into the focused field, nudge the cursor, switch apps, and surface native feedback — alert boxes and four styles of toast.</p>
+          <div class="code-window">
+            <div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">type_and_notify.py</span><button class="copy-btn" data-copy>COPY</button></div>
+            <pre class="code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.toasttypes</span> <span class="tk-k">import</span> <span class="tk-o">*</span>
+
+<span class="tk-v">device</span>.<span class="tk-f">switch_to_app</span>(<span class="tk-s">"com.apple.MobileSMS"</span>)
+<span class="tk-v">device</span>.<span class="tk-f">insert_text</span>(<span class="tk-s">"sent by zxtouch"</span>)
+<span class="tk-v">device</span>.<span class="tk-f">insert_text</span>(<span class="tk-s">"\b\b"</span>)              <span class="tk-c"># backspace x2</span>
+<span class="tk-v">device</span>.<span class="tk-f">move_cursor</span>(<span class="tk-o">-</span><span class="tk-n">3</span>)               <span class="tk-c"># move left 3</span>
+<span class="tk-v">device</span>.<span class="tk-f">show_toast</span>(<span class="tk-v">TOAST_SUCCESS</span>, <span class="tk-s">"Done!"</span>, <span class="tk-n">1.5</span>)
+<span class="tk-v">device</span>.<span class="tk-f">show_alert_box</span>(<span class="tk-s">"ZXTouch"</span>, <span class="tk-s">"Message ready"</span>, <span class="tk-n">3</span>)</pre>
           </div>
         </div>
 
         <div id="doc-panel" data-reveal>
-          <h3 class="font-semibold text-xl mb-3 tracking-tight">Floating panel</h3>
-          <p class="text-[color:var(--mut)] text-[14.5px] leading-relaxed">Double-click <span class="text-white">volume down</span> anywhere in iOS to open the ZXTouch control panel. From there you can run saved scripts, start/stop touch recording, and adjust settings — no computer required. Recordings are saved as ZXTouch scripts you can replay from the panel, Shortcuts, or <span class="font-mono text-[12.5px] text-[#7dd3fc]">play_script()</span>.</p>
+          <h3 class="font-semibold text-xl mb-3 tracking-tight">Recording &amp; the floating panel</h3>
+          <p style="color:var(--mut);font-size:14.5px" class="leading-relaxed mb-4">Double-click <b class="text-white">volume-down</b> anywhere in iOS to open the ZXTouch panel — run saved scripts, start/stop recording, and adjust settings without a computer. Recordings save as replayable ZXTouch scripts.</p>
+          <p style="color:var(--mut);font-size:14.5px" class="leading-relaxed">Programmatically, <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">start_touch_recording()</code> begins capture (double-click volume-down or call <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">stop_touch_recording()</code> to end), and <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">play_script(path)</code> replays one. Use <code style="color:#7dd3fc;font-family:'JetBrains Mono';font-size:12px">force_stop_script_play()</code> to abort.</p>
         </div>
 
         <div id="doc-api" data-reveal>
-          <h3 class="font-semibold text-xl mb-5 tracking-tight">API reference <span class="font-mono text-[11px] text-[color:var(--dim)] font-normal ml-2">zxtouch.client</span></h3>
-          <div class="card !rounded-2xl overflow-x-auto">
-            <table class="api-table min-w-[640px]">
-              <thead><tr><th>Method</th><th>Description</th></tr></thead>
-              <tbody>
-                <tr><td>touch(type, finger, x, y)</td><td>Simulate a single touch event — down, move, or up — for one finger index.</td></tr>
-                <tr><td>touch_with_list(events)</td><td>Dispatch multiple touch events in one frame for true multitouch gestures.</td></tr>
-                <tr><td>image_match(path, ...)</td><td>Template-match an image against the live screen; returns position &amp; size.</td></tr>
-                <tr><td>ocr(region, ...)</td><td>Run optical character recognition on a screen region.</td></tr>
-                <tr><td>pick_color(x, y)</td><td>Return the RGB value of the pixel at the given coordinates.</td></tr>
-                <tr><td>start_touch_recording() / stop_touch_recording()</td><td>Programmatically capture real touches into a replayable script.</td></tr>
-                <tr><td>play_script(path)</td><td>Execute a recorded or written ZXTouch script.</td></tr>
-                <tr><td>switch_to_app(bundle_id)</td><td>Bring any installed app to the foreground.</td></tr>
-                <tr><td>run_shell_command(cmd)</td><td>Execute a shell command as root and capture its output.</td></tr>
-                <tr><td>insert_text(text) / move_cursor(offset)</td><td>Type into and navigate the focused text field.</td></tr>
-                <tr><td>show_alert_box(title, msg, t) / show_toast(...)</td><td>Display system alerts and toast notifications from scripts.</td></tr>
-                <tr><td>get_screen_size() / get_screen_orientation()</td><td>Query display geometry for resolution-independent scripts.</td></tr>
-                <tr><td>get_device_info() / get_battery_info()</td><td>Read device model, iOS version, battery level and state.</td></tr>
+          <div class="flex flex-wrap items-center gap-3 mb-5">
+            <h3 class="font-semibold text-xl tracking-tight">Full API reference</h3>
+            <span style="font-family:'JetBrains Mono';font-size:11px;color:var(--dim)">zxtouch.client</span>
+          </div>
+          <div class="flex flex-wrap gap-2 mb-5" id="apiFilter">
+            <button class="pill-tab active" data-f="all">All</button>
+            <button class="pill-tab" data-f="touch">Touch</button>
+            <button class="pill-tab" data-f="vision">Vision</button>
+            <button class="pill-tab" data-f="text">Text &amp; UI</button>
+            <button class="pill-tab" data-f="script">Script</button>
+            <button class="pill-tab" data-f="info">Info</button>
+          </div>
+          <div class="card" style="border-radius:18px;overflow:hidden">
+            <div style="overflow-x:auto">
+            <table class="api-table" style="min-width:720px">
+              <thead><tr><th style="width:46%">Method &amp; parameters</th><th>Description &amp; returns</th></tr></thead>
+              <tbody id="apiBody">
+                <tr data-cat="touch"><td>touch(type, finger_index, x, y)</td><td><code>type</code> = TOUCH_DOWN/MOVE/UP · <code>finger_index</code> 1–19 · <code>x,y</code> screen points. Fires one touch event. <span style="color:var(--dim)">Returns None.</span></td></tr>
+                <tr data-cat="touch"><td>touch_with_list(touch_list)</td><td>List of dicts <code>{"type","finger_index","x","y"}</code> dispatched in a single frame — the basis for multi-finger gestures. <span style="color:var(--dim)">Returns None.</span></td></tr>
+                <tr data-cat="vision"><td>image_match(template_path, acceptable_value=0.8, max_try_times=4, scaleRatio=0.8)</td><td>Template-match an image on the live screen. Returns <code>(bool, dict)</code> with <code>x, y, width, height</code>; <code>width/height == 0</code> means no match.</td></tr>
+                <tr data-cat="vision"><td>ocr(region, custom_words=[], minimum_height="", recognition_level=0, languages=[], auto_correct=0, debug_image_path="")</td><td><code>region</code> = (x, y, w, h) · <code>recognition_level</code> 0 = accurate, 1 = fast. Returns <code>(bool, [str, …])</code> of recognized lines.</td></tr>
+                <tr data-cat="vision"><td>get_supported_ocr_languages(recognition_level)</td><td>List OCR language codes available for a recognition level. Returns <code>(bool, [str, …])</code>.</td></tr>
+                <tr data-cat="vision"><td>pick_color(x, y)</td><td>Sample the pixel at <code>x, y</code>. Returns <code>(bool, dict)</code> with <code>red, green, blue</code>.</td></tr>
+                <tr data-cat="text"><td>insert_text(text)</td><td>Type into the focused field. Use <code>"\b"</code> per character to delete. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="text"><td>move_cursor(offset)</td><td>Move the text cursor — negative = left, positive = right. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="text"><td>show_keyboard() / hide_keyboard()</td><td>Force the software keyboard to show or hide. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="text"><td>show_alert_box(title, content, duration)</td><td>Display a native alert box for <code>duration</code> seconds. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="text"><td>show_toast(toast_type, content, duration, position=0, fontSize=0)</td><td><code>toast_type</code> = TOAST_SUCCESS/ERROR/WARNING/MESSAGE. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="text"><td>switch_to_app(bundle_identifier)</td><td>Bring any installed app to the foreground by bundle id. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="script"><td>play_script(script_absolute_path)</td><td>Run a recorded or written ZXTouch script. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="script"><td>force_stop_script_play()</td><td>Abort the currently playing script. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="script"><td>start_touch_recording() / stop_touch_recording()</td><td>Begin / end capturing real touches into a replayable script. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="script"><td>run_shell_command(command)</td><td>Execute a shell command as root and capture output. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="script"><td>accurate_usleep(microseconds)</td><td>High-precision sleep — steadier frame pacing than time.sleep. Returns <code>(bool, err)</code>.</td></tr>
+                <tr data-cat="info"><td>get_screen_size()</td><td>Returns <code>(bool, dict)</code> with <code>width, height</code> in points.</td></tr>
+                <tr data-cat="info"><td>get_screen_scale()</td><td>Returns <code>(bool, scale)</code> — the display's pixel scale factor.</td></tr>
+                <tr data-cat="info"><td>get_screen_orientation()</td><td>Returns <code>(bool, orientation)</code> as an integer code.</td></tr>
+                <tr data-cat="info"><td>get_device_info()</td><td>Returns <code>(bool, dict)</code>: <code>name, system_name, system_version, model, identifier_for_vendor</code>.</td></tr>
+                <tr data-cat="info"><td>get_battery_info()</td><td>Returns <code>(bool, dict)</code>: <code>battery_state, battery_level, battery_state_string</code>.</td></tr>
+                <tr data-cat="info"><td>disconnect()</td><td>Close the socket connection to the daemon. Call when finished.</td></tr>
               </tbody>
             </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="doc-constants" data-reveal>
+          <h3 class="font-semibold text-xl mb-5 tracking-tight">Constants</h3>
+          <div class="grid sm:grid-cols-2 gap-5">
+            <div class="card p-6"><div class="spot"></div>
+              <p style="font-family:'JetBrains Mono';font-size:11px;letter-spacing:.12em;color:var(--dim)" class="mb-3">from zxtouch.touchtypes import *</p>
+              <ul class="space-y-2 text-[13px]" style="color:var(--mut)">
+                <li><code style="color:#7dd3fc;font-family:'JetBrains Mono'">TOUCH_DOWN</code> — finger lands</li>
+                <li><code style="color:#7dd3fc;font-family:'JetBrains Mono'">TOUCH_MOVE</code> — finger drags</li>
+                <li><code style="color:#7dd3fc;font-family:'JetBrains Mono'">TOUCH_UP</code> — finger lifts</li>
+              </ul>
+            </div>
+            <div class="card p-6"><div class="spot"></div>
+              <p style="font-family:'JetBrains Mono';font-size:11px;letter-spacing:.12em;color:var(--dim)" class="mb-3">from zxtouch.toasttypes import *</p>
+              <ul class="space-y-2 text-[13px]" style="color:var(--mut)">
+                <li><code style="color:#7dd3fc;font-family:'JetBrains Mono'">TOAST_SUCCESS</code> · <code style="color:#7dd3fc;font-family:'JetBrains Mono'">TOAST_ERROR</code></li>
+                <li><code style="color:#7dd3fc;font-family:'JetBrains Mono'">TOAST_WARNING</code> · <code style="color:#7dd3fc;font-family:'JetBrains Mono'">TOAST_MESSAGE</code></li>
+                <li><code style="color:#7dd3fc;font-family:'JetBrains Mono'">TOAST_BUTTOM</code> — default position (0)</li>
+              </ul>
+            </div>
           </div>
         </div>
 
@@ -528,19 +536,17 @@ a:hover .demo-thumb .play span{transform:scale(1.1);box-shadow:0 0 40px -6px rgb
   </div>
 </section>
 
-<!-- ══════════════ EXAMPLES ══════════════ -->
-<section id="examples" class="relative py-24 border-t border-[color:var(--line)]">
-  <div class="glow-orb w-[500px] h-[400px] bottom-0 -left-40 bg-[radial-gradient(circle,rgba(0,240,255,.06),transparent_65%)]"></div>
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
-    <div class="max-w-2xl mb-14" data-reveal>
-      <span class="eyebrow mb-5 inline-flex">Examples</span>
-      <h2 class="h-display text-[clamp(2rem,4.4vw,3.2rem)]">Copy, paste, <span class="serif-accent">automate.</span></h2>
+<!-- ══ EXAMPLES ══ -->
+<section id="examples" class="py-20 lg:py-28 border-t" style="border-color:var(--line)">
+  <div class="wrap">
+    <div class="max-w-2xl mb-12" data-reveal>
+      <span class="eyebrow mb-5">Examples</span>
+      <h2 class="h-display" style="font-size:clamp(2rem,5vw,3.3rem)">Copy, paste, <span class="grad-text serif">automate.</span></h2>
     </div>
     <div class="grid lg:grid-cols-2 gap-6">
-      <div data-reveal>
-        <div class="code-window h-full">
-          <div class="code-head"><span class="d bg-[#ff5f57]"></span><span class="d bg-[#febc2e]"></span><span class="d bg-[#28c840]"></span><span class="name">auto_tapper.py — tap a spot every second</span><button class="copy-btn" data-copy>COPY</button></div>
-          <pre class="code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.client</span> <span class="tk-k">import</span> <span class="tk-v">zxtouch</span>
+      <div data-reveal><div class="code-window h-full">
+        <div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">auto_tapper.py — tap a spot every second</span><button class="copy-btn" data-copy>COPY</button></div>
+        <pre class="code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.client</span> <span class="tk-k">import</span> <span class="tk-v">zxtouch</span>
 <span class="tk-k">from</span> <span class="tk-v">zxtouch.touchtypes</span> <span class="tk-k">import</span> <span class="tk-o">*</span>
 <span class="tk-k">import</span> <span class="tk-v">time</span>
 
@@ -548,216 +554,229 @@ a:hover .demo-thumb .play span{transform:scale(1.1);box-shadow:0 0 40px -6px rgb
 <span class="tk-k">try</span>:
     <span class="tk-k">while</span> <span class="tk-k">True</span>:
         <span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_DOWN</span>, <span class="tk-n">1</span>, <span class="tk-n">390</span>, <span class="tk-n">844</span>)
-        <span class="tk-v">time</span>.<span class="tk-f">sleep</span>(<span class="tk-n">0.05</span>)
         <span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_UP</span>, <span class="tk-n">1</span>, <span class="tk-n">390</span>, <span class="tk-n">844</span>)
         <span class="tk-v">time</span>.<span class="tk-f">sleep</span>(<span class="tk-n">1</span>)
 <span class="tk-k">finally</span>:
     <span class="tk-v">device</span>.<span class="tk-f">disconnect</span>()</pre>
-        </div>
-      </div>
-      <div data-reveal>
-        <div class="code-window h-full">
-          <div class="code-head"><span class="d bg-[#ff5f57]"></span><span class="d bg-[#febc2e]"></span><span class="d bg-[#28c840]"></span><span class="name">app_pilot.py — launch an app &amp; type</span><button class="copy-btn" data-copy>COPY</button></div>
-          <pre class="code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.client</span> <span class="tk-k">import</span> <span class="tk-v">zxtouch</span>
-<span class="tk-k">import</span> <span class="tk-v">time</span>
-
-<span class="tk-v">device</span> <span class="tk-o">=</span> <span class="tk-f">zxtouch</span>(<span class="tk-s">"127.0.0.1"</span>)
-
-<span class="tk-v">device</span>.<span class="tk-f">switch_to_app</span>(<span class="tk-s">"com.apple.MobileSMS"</span>)
-<span class="tk-v">time</span>.<span class="tk-f">sleep</span>(<span class="tk-n">2</span>)
-<span class="tk-v">device</span>.<span class="tk-f">insert_text</span>(<span class="tk-s">"sent by zxtouch ✨"</span>)
-<span class="tk-v">device</span>.<span class="tk-f">show_toast</span>(<span class="tk-n">1</span>, <span class="tk-s">"Message typed!"</span>, <span class="tk-n">1.5</span>)
-
-<span class="tk-v">device</span>.<span class="tk-f">disconnect</span>()</pre>
-        </div>
-      </div>
-      <div data-reveal>
-        <div class="code-window h-full">
-          <div class="code-head"><span class="d bg-[#ff5f57]"></span><span class="d bg-[#febc2e]"></span><span class="d bg-[#28c840]"></span><span class="name">watcher.py — wait for a button, then tap</span><button class="copy-btn" data-copy>COPY</button></div>
-          <pre class="code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.client</span> <span class="tk-k">import</span> <span class="tk-v">zxtouch</span>
+      </div></div>
+      <div data-reveal><div class="code-window h-full">
+        <div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">watcher.py — wait for a button, then tap it</span><button class="copy-btn" data-copy>COPY</button></div>
+        <pre class="code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.client</span> <span class="tk-k">import</span> <span class="tk-v">zxtouch</span>
 <span class="tk-k">from</span> <span class="tk-v">zxtouch.touchtypes</span> <span class="tk-k">import</span> <span class="tk-o">*</span>
 <span class="tk-k">import</span> <span class="tk-v">time</span>
 
 <span class="tk-v">device</span> <span class="tk-o">=</span> <span class="tk-f">zxtouch</span>(<span class="tk-s">"127.0.0.1"</span>)
-
 <span class="tk-k">while</span> <span class="tk-k">True</span>:
-    <span class="tk-v">ok</span>, <span class="tk-v">info</span> <span class="tk-o">=</span> <span class="tk-v">device</span>.<span class="tk-f">image_match</span>(<span class="tk-s">"/var/mobile/claim.png"</span>)
-    <span class="tk-k">if</span> <span class="tk-v">ok</span>:
-        <span class="tk-v">x</span> <span class="tk-o">=</span> <span class="tk-f">float</span>(<span class="tk-v">info</span>[<span class="tk-s">"x"</span>]) <span class="tk-o">+</span> <span class="tk-f">float</span>(<span class="tk-v">info</span>[<span class="tk-s">"width"</span>]) <span class="tk-o">/</span> <span class="tk-n">2</span>
-        <span class="tk-v">y</span> <span class="tk-o">=</span> <span class="tk-f">float</span>(<span class="tk-v">info</span>[<span class="tk-s">"y"</span>]) <span class="tk-o">+</span> <span class="tk-f">float</span>(<span class="tk-v">info</span>[<span class="tk-s">"height"</span>]) <span class="tk-o">/</span> <span class="tk-n">2</span>
+    <span class="tk-v">ok</span>, <span class="tk-v">m</span> <span class="tk-o">=</span> <span class="tk-v">device</span>.<span class="tk-f">image_match</span>(<span class="tk-s">"/var/mobile/claim.png"</span>)
+    <span class="tk-k">if</span> <span class="tk-v">ok</span> <span class="tk-k">and</span> <span class="tk-f">float</span>(<span class="tk-v">m</span>[<span class="tk-s">"width"</span>]) <span class="tk-o">&gt;</span> <span class="tk-n">0</span>:
+        <span class="tk-v">x</span> <span class="tk-o">=</span> <span class="tk-f">float</span>(<span class="tk-v">m</span>[<span class="tk-s">"x"</span>]) <span class="tk-o">+</span> <span class="tk-f">float</span>(<span class="tk-v">m</span>[<span class="tk-s">"width"</span>])<span class="tk-o">/</span><span class="tk-n">2</span>
+        <span class="tk-v">y</span> <span class="tk-o">=</span> <span class="tk-f">float</span>(<span class="tk-v">m</span>[<span class="tk-s">"y"</span>]) <span class="tk-o">+</span> <span class="tk-f">float</span>(<span class="tk-v">m</span>[<span class="tk-s">"height"</span>])<span class="tk-o">/</span><span class="tk-n">2</span>
         <span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_DOWN</span>, <span class="tk-n">1</span>, <span class="tk-v">x</span>, <span class="tk-v">y</span>)
         <span class="tk-v">device</span>.<span class="tk-f">touch</span>(<span class="tk-v">TOUCH_UP</span>, <span class="tk-n">1</span>, <span class="tk-v">x</span>, <span class="tk-v">y</span>)
         <span class="tk-k">break</span>
     <span class="tk-v">time</span>.<span class="tk-f">sleep</span>(<span class="tk-n">0.5</span>)</pre>
-        </div>
-      </div>
-      <div data-reveal>
-        <div class="code-window h-full">
-          <div class="code-head"><span class="d bg-[#ff5f57]"></span><span class="d bg-[#febc2e]"></span><span class="d bg-[#28c840]"></span><span class="name">battery_guard.py — pause automation when hot</span><button class="copy-btn" data-copy>COPY</button></div>
-          <pre class="code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.client</span> <span class="tk-k">import</span> <span class="tk-v">zxtouch</span>
+      </div></div>
+      <div data-reveal><div class="code-window h-full">
+        <div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">app_pilot.py — launch an app &amp; type</span><button class="copy-btn" data-copy>COPY</button></div>
+        <pre class="code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.client</span> <span class="tk-k">import</span> <span class="tk-v">zxtouch</span>
+<span class="tk-k">from</span> <span class="tk-v">zxtouch.toasttypes</span> <span class="tk-k">import</span> <span class="tk-o">*</span>
 <span class="tk-k">import</span> <span class="tk-v">time</span>
 
 <span class="tk-v">device</span> <span class="tk-o">=</span> <span class="tk-f">zxtouch</span>(<span class="tk-s">"127.0.0.1"</span>)
+<span class="tk-v">device</span>.<span class="tk-f">switch_to_app</span>(<span class="tk-s">"com.apple.MobileSMS"</span>)
+<span class="tk-v">time</span>.<span class="tk-f">sleep</span>(<span class="tk-n">2</span>)
+<span class="tk-v">device</span>.<span class="tk-f">insert_text</span>(<span class="tk-s">"sent by zxtouch"</span>)
+<span class="tk-v">device</span>.<span class="tk-f">show_toast</span>(<span class="tk-v">TOAST_SUCCESS</span>, <span class="tk-s">"Typed!"</span>, <span class="tk-n">1.5</span>)
+<span class="tk-v">device</span>.<span class="tk-f">disconnect</span>()</pre>
+      </div></div>
+      <div data-reveal><div class="code-window h-full">
+        <div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">battery_guard.py — pause when low</span><button class="copy-btn" data-copy>COPY</button></div>
+        <pre class="code"><span class="tk-k">from</span> <span class="tk-v">zxtouch.client</span> <span class="tk-k">import</span> <span class="tk-v">zxtouch</span>
 
-<span class="tk-v">ok</span>, <span class="tk-v">battery</span> <span class="tk-o">=</span> <span class="tk-v">device</span>.<span class="tk-f">get_battery_info</span>()
-<span class="tk-k">if</span> <span class="tk-v">ok</span> <span class="tk-k">and</span> <span class="tk-f">float</span>(<span class="tk-v">battery</span>[<span class="tk-s">"battery_level"</span>]) <span class="tk-o">&lt;</span> <span class="tk-n">0.2</span>:
+<span class="tk-v">device</span> <span class="tk-o">=</span> <span class="tk-f">zxtouch</span>(<span class="tk-s">"127.0.0.1"</span>)
+<span class="tk-v">ok</span>, <span class="tk-v">bat</span> <span class="tk-o">=</span> <span class="tk-v">device</span>.<span class="tk-f">get_battery_info</span>()
+<span class="tk-k">if</span> <span class="tk-v">ok</span> <span class="tk-k">and</span> <span class="tk-f">float</span>(<span class="tk-v">bat</span>[<span class="tk-s">"battery_level"</span>]) <span class="tk-o">&lt;</span> <span class="tk-n">0.2</span>:
     <span class="tk-v">device</span>.<span class="tk-f">show_alert_box</span>(<span class="tk-s">"ZXTouch"</span>,
-        <span class="tk-s">"Battery under 20% — pausing script."</span>, <span class="tk-n">3</span>)
+        <span class="tk-s">"Battery under 20% — pausing."</span>, <span class="tk-n">3</span>)
 <span class="tk-k">else</span>:
     <span class="tk-v">device</span>.<span class="tk-f">play_script</span>(<span class="tk-s">"/var/mobile/farm.zxs"</span>)</pre>
-        </div>
-      </div>
+      </div></div>
     </div>
   </div>
 </section>
 
-<!-- ══════════════ INSTALL ══════════════ -->
-<section id="install" class="relative py-24 border-t border-[color:var(--line)]">
-  <div class="glow-orb w-[600px] h-[450px] top-10 right-0 bg-[radial-gradient(circle,rgba(0,240,255,.07),transparent_65%)]"></div>
-  <div class="max-w-7xl mx-auto px-6 lg:px-10 grid lg:grid-cols-[.85fr_1.15fr] gap-14">
+<!-- ══ INSTALL ══ -->
+<section id="install" class="py-20 lg:py-28 border-t" style="border-color:var(--line)">
+  <div class="wrap grid lg:grid-cols-[.85fr_1.15fr] gap-12 lg:gap-14">
     <div data-reveal>
-      <span class="eyebrow mb-5 inline-flex">Installation</span>
-      <h2 class="h-display text-[clamp(2rem,4.2vw,3rem)] mb-5">Two minutes to <span class="serif-accent">first touch.</span></h2>
-      <p class="text-[color:var(--mut)] text-[15px] leading-relaxed mb-8">Grab the right <span class="font-mono text-[13px] text-white">.deb</span> for your jailbreak from GitHub Releases (or the latest build from GitHub Actions), install, respring. Done.</p>
-      <div class="flex gap-2 mb-8" role="tablist">
-        <button class="tab-btn active" data-tab="dopamine">DOPAMINE</button>
-        <button class="tab-btn" data-tab="roothide">ROOTHIDE / SEROTONIN</button>
+      <span class="eyebrow mb-5">Installation</span>
+      <h2 class="h-display mb-5" style="font-size:clamp(2rem,4.6vw,3rem)">Two minutes to <span class="grad-text serif">first touch.</span></h2>
+      <p style="color:var(--mut);font-size:15px" class="leading-relaxed mb-8">Grab the right <span class="text-white" style="font-family:'JetBrains Mono';font-size:13px">.deb</span> for your jailbreak from GitHub Releases (or a fresh build from Actions), install, respring. Done.</p>
+      <div class="flex flex-wrap gap-2 mb-8">
+        <button class="pill-tab active" data-tab="dopamine">DOPAMINE (rootless)</button>
+        <button class="pill-tab" data-tab="roothide">ROOTHIDE / SEROTONIN</button>
       </div>
-      <a href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener" class="btn-primary !text-[13px]">Download .deb from Releases</a>
+      <a href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener" class="btn btn-primary">Download .deb from Releases</a>
     </div>
-    <div class="space-y-7" data-reveal>
+    <div data-reveal>
       <div data-tabpane="dopamine" class="space-y-7">
-        <div class="step" data-n="01"><h4 class="font-semibold text-[15px] mb-1.5">Download the rootless package</h4><p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">From <a class="text-[color:var(--cy)] hover:underline" href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener">Releases</a>, grab the file ending in <span class="font-mono text-[12px] text-white">_rootless.deb</span> (built for Dopamine on iOS 16.4.1 / 16.6.1).</p></div>
-        <div class="step" data-n="02"><h4 class="font-semibold text-[15px] mb-1.5">Install the deb</h4><p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed mb-3">Use Sileo, Zebra, or install over SSH / NewTerm:</p>
-          <div class="code-window"><div class="code-head"><span class="d bg-[#ff5f57]"></span><span class="d bg-[#febc2e]"></span><span class="d bg-[#28c840]"></span><span class="name">terminal</span><button class="copy-btn" data-copy>COPY</button></div><pre class="code"><span class="tk-c">$</span> <span class="tk-f">dpkg</span> <span class="tk-o">-i</span> zxtouch_*_rootless.deb
+        <div class="step" data-n="01"><h4 class="font-semibold text-[15px] mb-1.5">Download the rootless package</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">From <a style="color:var(--cy)" class="hover:underline" href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener">Releases</a>, grab the file ending in <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">_rootless.deb</span> (built for Dopamine on iOS 16.4.1 / 16.6.1).</p></div>
+        <div class="step" data-n="02"><h4 class="font-semibold text-[15px] mb-1.5">Install &amp; respring</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed mb-3">Via Sileo/Zebra, or over SSH / NewTerm:</p>
+          <div class="code-window"><div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">terminal</span><button class="copy-btn" data-copy>COPY</button></div><pre class="code"><span class="tk-c">$</span> <span class="tk-f">dpkg</span> <span class="tk-o">-i</span> zxtouch_*_rootless.deb
 <span class="tk-c">$</span> <span class="tk-f">killall</span> <span class="tk-o">-9</span> SpringBoard</pre></div></div>
-        <div class="step" data-n="03"><h4 class="font-semibold text-[15px] mb-1.5">Install Python 3</h4><p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Add the <span class="text-white">Procursus</span> repo in your package manager and install <span class="font-mono text-[12px] text-white">python3</span> — required to run automation scripts on-device.</p></div>
-        <div class="step" data-n="04"><h4 class="font-semibold text-[15px] mb-1.5">Verify</h4><p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Double-click volume-down — the floating panel should appear. The daemon is now listening on <span class="font-mono text-[12px] text-white">127.0.0.1:6000</span>.</p></div>
+        <div class="step" data-n="03"><h4 class="font-semibold text-[15px] mb-1.5">Install Python 3</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Add the <span class="text-white">Procursus</span> repo and install <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">python3</span> — required to run scripts on-device.</p></div>
+        <div class="step" data-n="04"><h4 class="font-semibold text-[15px] mb-1.5">Verify</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Double-click volume-down — the floating panel appears. The daemon is now listening on <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">127.0.0.1:6000</span>.</p></div>
       </div>
       <div data-tabpane="roothide" class="space-y-7 hidden">
-        <div class="step" data-n="01"><h4 class="font-semibold text-[15px] mb-1.5">Download the roothide package</h4><p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">From <a class="text-[color:var(--cy)] hover:underline" href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener">Releases</a>, grab the file ending in <span class="font-mono text-[12px] text-white">_roothide.deb</span> (built for Roothide / Serotonin on iOS 15.8 / 16.6.1).</p></div>
-        <div class="step" data-n="02"><h4 class="font-semibold text-[15px] mb-1.5">Install the deb</h4><p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed mb-3">Use your package manager or install from a terminal:</p>
-          <div class="code-window"><div class="code-head"><span class="d bg-[#ff5f57]"></span><span class="d bg-[#febc2e]"></span><span class="d bg-[#28c840]"></span><span class="name">terminal</span><button class="copy-btn" data-copy>COPY</button></div><pre class="code"><span class="tk-c">$</span> <span class="tk-f">dpkg</span> <span class="tk-o">-i</span> zxtouch_*_roothide.deb
+        <div class="step" data-n="01"><h4 class="font-semibold text-[15px] mb-1.5">Download the roothide package</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">From <a style="color:var(--cy)" class="hover:underline" href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener">Releases</a>, grab the file ending in <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">_roothide.deb</span> (built for Roothide / Serotonin on iOS 15.8 / 16.6.1).</p></div>
+        <div class="step" data-n="02"><h4 class="font-semibold text-[15px] mb-1.5">Install &amp; respring</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed mb-3">Via your package manager or a terminal:</p>
+          <div class="code-window"><div class="code-head"><span class="d" style="background:#ff5f57"></span><span class="d" style="background:#febc2e"></span><span class="d" style="background:#28c840"></span><span class="name">terminal</span><button class="copy-btn" data-copy>COPY</button></div><pre class="code"><span class="tk-c">$</span> <span class="tk-f">dpkg</span> <span class="tk-o">-i</span> zxtouch_*_roothide.deb
 <span class="tk-c">$</span> <span class="tk-f">killall</span> <span class="tk-o">-9</span> SpringBoard</pre></div></div>
-        <div class="step" data-n="03"><h4 class="font-semibold text-[15px] mb-1.5">Install Python 3</h4><p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Install <span class="font-mono text-[12px] text-white">python3</span> from the Procursus repo to run scripts on-device.</p></div>
-        <div class="step" data-n="04"><h4 class="font-semibold text-[15px] mb-1.5">Verify</h4><p class="text-[color:var(--mut)] text-[13.5px] leading-relaxed">Double-click volume-down for the floating panel. Daemon listens on <span class="font-mono text-[12px] text-white">127.0.0.1:6000</span>.</p></div>
+        <div class="step" data-n="03"><h4 class="font-semibold text-[15px] mb-1.5">Install Python 3</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Install <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">python3</span> from the Procursus repo to run scripts on-device.</p></div>
+        <div class="step" data-n="04"><h4 class="font-semibold text-[15px] mb-1.5">Verify</h4><p style="color:var(--mut);font-size:13.5px" class="leading-relaxed">Double-click volume-down for the panel. Daemon listens on <span class="text-white" style="font-family:'JetBrains Mono';font-size:12px">127.0.0.1:6000</span>.</p></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ══════════════ COMPATIBILITY ══════════════ -->
-<section id="compat" class="relative py-24 border-t border-[color:var(--line)]">
-  <div class="max-w-4xl mx-auto px-6 lg:px-10">
+<!-- ══ COMPAT ══ -->
+<section id="compat" class="py-20 lg:py-28 border-t" style="border-color:var(--line)">
+  <div class="wrap" style="max-width:900px">
     <div class="text-center mb-12" data-reveal>
-      <span class="eyebrow mb-5 inline-flex">Compatibility</span>
-      <h2 class="h-display text-[clamp(2rem,4.2vw,3rem)]">Tested where <span class="serif-accent">it matters.</span></h2>
+      <span class="eyebrow mb-5" style="justify-content:center">Compatibility</span>
+      <h2 class="h-display" style="font-size:clamp(2rem,4.6vw,3rem)">Tested where <span class="grad-text serif">it matters.</span></h2>
     </div>
-    <div class="card !rounded-2xl overflow-x-auto" data-reveal>
-      <table class="api-table min-w-[560px]">
+    <div class="card" style="border-radius:18px;overflow:hidden" data-reveal>
+      <div style="overflow-x:auto">
+      <table class="api-table" style="min-width:560px">
         <thead><tr><th>Jailbreak</th><th>iOS versions</th><th>Package</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td class="!text-white !font-sans font-medium">Dopamine (rootless)</td><td>16.4.1 · 16.6.1</td><td class="font-mono text-[12px]">*_rootless.deb</td><td><span class="text-emerald-400 font-mono text-[12px]">✓ TESTED</span></td></tr>
-          <tr><td class="!text-white !font-sans font-medium">Roothide / Serotonin</td><td>15.8 · 16.6.1</td><td class="font-mono text-[12px]">*_roothide.deb</td><td><span class="text-emerald-400 font-mono text-[12px]">✓ TESTED</span></td></tr>
-          <tr><td class="!text-white !font-sans font-medium">Legacy (original ZXTouch)</td><td>11.0 – 14.x</td><td class="font-mono text-[12px]">upstream repo</td><td><span class="text-[color:var(--dim)] font-mono text-[12px]">UPSTREAM</span></td></tr>
+          <tr><td style="color:#fff;font-family:Inter;font-weight:500">Dopamine (rootless)</td><td>16.4.1 · 16.6.1</td><td style="font-family:'JetBrains Mono';font-size:12px">*_rootless.deb</td><td><span style="color:#34d399;font-family:'JetBrains Mono';font-size:12px">✓ TESTED</span></td></tr>
+          <tr><td style="color:#fff;font-family:Inter;font-weight:500">Roothide / Serotonin</td><td>15.8 · 16.6.1</td><td style="font-family:'JetBrains Mono';font-size:12px">*_roothide.deb</td><td><span style="color:#34d399;font-family:'JetBrains Mono';font-size:12px">✓ TESTED</span></td></tr>
+          <tr><td style="color:#fff;font-family:Inter;font-weight:500">Legacy (original ZXTouch)</td><td>11.0 – 14.x</td><td style="font-family:'JetBrains Mono';font-size:12px">upstream repo</td><td><span style="color:var(--dim);font-family:'JetBrains Mono';font-size:12px">UPSTREAM</span></td></tr>
         </tbody>
       </table>
+      </div>
     </div>
-    <p class="text-center text-[color:var(--dim)] text-[12.5px] mt-6" data-reveal>Other rootless setups on iOS 15–16.6.1 will likely work — reports welcome on GitHub or Discord.</p>
+    <p class="text-center mt-6" style="color:var(--dim);font-size:12.5px" data-reveal>Other rootless setups on iOS 15–16.6.1 will likely work — reports welcome on GitHub or Discord.</p>
   </div>
 </section>
 
-<!-- ══════════════ COMMUNITY / CTA ══════════════ -->
-<section id="community" class="relative py-28 border-t border-[color:var(--line)] overflow-hidden">
-  <div class="glow-orb w-[700px] h-[500px] -bottom-40 left-1/2 -translate-x-1/2 bg-[radial-gradient(circle,rgba(0,240,255,.1),transparent_60%)]"></div>
-  <div class="grid-bg absolute inset-0 rotate-180"></div>
-  <div class="relative max-w-3xl mx-auto px-6 text-center" data-reveal>
-    <span class="eyebrow mb-6 inline-flex !justify-center">Community</span>
-    <h2 class="h-display text-[clamp(2.2rem,5vw,3.6rem)] mb-6">Build something <span class="serif-accent">unstoppable.</span></h2>
-    <p class="text-[color:var(--mut)] text-[15.5px] leading-relaxed mb-10 max-w-xl mx-auto">Join the community shaping iOS automation — share scripts, report device compatibility, and help bring ZXTouch to new jailbreaks.</p>
-    <div class="flex flex-wrap justify-center gap-4">
-      <a href="https://discord.gg/acSXfyz" target="_blank" rel="noopener" class="btn-primary">Join the Discord</a>
-      <a href="https://github.com/Epic0001/zxtouchrootless" target="_blank" rel="noopener" class="btn-ghost">Star on GitHub</a>
+<!-- ══ COMMUNITY ══ -->
+<section id="community" class="py-24 lg:py-32 border-t relative overflow-hidden" style="border-color:var(--line)">
+  <div class="grid-bg" style="transform:rotate(180deg)"></div>
+  <div class="wrap relative text-center" style="max-width:760px">
+    <span class="eyebrow mb-6" style="justify-content:center" data-reveal>Community</span>
+    <h2 class="h-display mb-6" style="font-size:clamp(2.2rem,6vw,3.8rem)" data-reveal>Build something <span class="grad-text serif">unstoppable.</span></h2>
+    <p style="color:var(--mut);font-size:15.5px" class="leading-relaxed mb-10 mx-auto" data-reveal>Join the community shaping iOS automation — share scripts, report device compatibility, and help bring ZXTouch to new jailbreaks.</p>
+    <div class="flex flex-wrap justify-center gap-4" data-reveal>
+      <a href="https://discord.gg/acSXfyz" target="_blank" rel="noopener" class="btn btn-primary">Join the Discord</a>
+      <a href="https://github.com/Epic0001/zxtouchrootless" target="_blank" rel="noopener" class="btn btn-ghost">Star on GitHub</a>
     </div>
   </div>
 </section>
 
-<!-- ══════════════ FOOTER ══════════════ -->
-<footer class="border-t border-[color:var(--line)] py-14">
-  <div class="max-w-7xl mx-auto px-6 lg:px-10">
+<!-- ══ FOOTER ══ -->
+<footer class="border-t py-14" style="border-color:var(--line)">
+  <div class="wrap">
     <div class="flex flex-col md:flex-row justify-between gap-10">
       <div class="max-w-xs">
-        <div class="flex items-center gap-3 mb-4">
-          <svg width="22" height="22" viewBox="0 0 26 26" fill="none"><rect x="1" y="1" width="24" height="24" rx="7" stroke="#00f0ff" stroke-opacity=".6" stroke-width="1.5"/><circle cx="13" cy="13" r="3.2" fill="#00f0ff"/></svg>
-          <span class="font-semibold text-[14px]">ZXTouch Rootless</span>
-        </div>
-        <p class="text-[color:var(--dim)] text-[12.5px] leading-relaxed">Open-source system-wide touch simulation for jailbroken iOS. A rootless / roothide port by <a href="https://github.com/Epic0001" class="text-[color:var(--mut)] hover:text-[color:var(--cy)]" target="_blank" rel="noopener">Epic0001</a>, built on the original ZXTouch by <a href="https://github.com/xuan32546" class="text-[color:var(--mut)] hover:text-[color:var(--cy)]" target="_blank" rel="noopener">xuan32546</a>.</p>
+        <div class="flex items-center gap-3 mb-4"><svg width="22" height="22" viewBox="0 0 26 26" fill="none"><rect x="1" y="1" width="24" height="24" rx="7" stroke="#00f0ff" stroke-opacity=".6" stroke-width="1.5"/><circle cx="13" cy="13" r="3.2" fill="#00f0ff"/></svg><span class="font-semibold text-[14px]">ZXTouch Rootless</span></div>
+        <p style="color:var(--dim);font-size:12.5px" class="leading-relaxed">Open-source system-wide touch simulation for jailbroken iOS. A rootless / roothide port by <a href="https://github.com/Epic0001" class="footer-link" target="_blank" rel="noopener">Epic0001</a>, built on the original ZXTouch by <a href="https://github.com/xuan32546" class="footer-link" target="_blank" rel="noopener">xuan32546</a>.</p>
       </div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-16 gap-y-3">
-        <div class="space-y-3 flex flex-col">
-          <span class="font-mono text-[10px] tracking-[.2em] text-[color:var(--dim)] mb-1">PROJECT</span>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-14 gap-y-3">
+        <div class="space-y-3 flex flex-col"><span style="font-family:'JetBrains Mono';font-size:10px;letter-spacing:.2em;color:var(--dim)" class="mb-1">PROJECT</span>
           <a class="footer-link" href="https://github.com/Epic0001/zxtouchrootless" target="_blank" rel="noopener">Repository</a>
           <a class="footer-link" href="https://github.com/Epic0001/zxtouchrootless/releases" target="_blank" rel="noopener">Releases</a>
           <a class="footer-link" href="https://github.com/Epic0001/zxtouchrootless/actions" target="_blank" rel="noopener">CI Builds</a>
-          <a class="footer-link" href="https://github.com/Epic0001/zxtouchrootless/issues" target="_blank" rel="noopener">Issues</a>
-        </div>
-        <div class="space-y-3 flex flex-col">
-          <span class="font-mono text-[10px] tracking-[.2em] text-[color:var(--dim)] mb-1">LEARN</span>
+          <a class="footer-link" href="https://github.com/Epic0001/zxtouchrootless/issues" target="_blank" rel="noopener">Issues</a></div>
+        <div class="space-y-3 flex flex-col"><span style="font-family:'JetBrains Mono';font-size:10px;letter-spacing:.2em;color:var(--dim)" class="mb-1">LEARN</span>
           <a class="footer-link" href="#docs">Documentation</a>
           <a class="footer-link" href="#examples">Examples</a>
           <a class="footer-link" href="#install">Installation</a>
-          <a class="footer-link" href="#compat">Compatibility</a>
-        </div>
-        <div class="space-y-3 flex flex-col">
-          <span class="font-mono text-[10px] tracking-[.2em] text-[color:var(--dim)] mb-1">COMMUNITY</span>
+          <a class="footer-link" href="#compat">Compatibility</a></div>
+        <div class="space-y-3 flex flex-col"><span style="font-family:'JetBrains Mono';font-size:10px;letter-spacing:.2em;color:var(--dim)" class="mb-1">COMMUNITY</span>
           <a class="footer-link" href="https://discord.gg/acSXfyz" target="_blank" rel="noopener">Discord</a>
-          <a class="footer-link" href="https://github.com/xuan32546/IOS13-SimulateTouch" target="_blank" rel="noopener">Original project</a>
-        </div>
+          <a class="footer-link" href="https://github.com/xuan32546/IOS13-SimulateTouch" target="_blank" rel="noopener">Original project</a></div>
       </div>
     </div>
     <div class="section-line my-9"></div>
-    <div class="flex flex-col sm:flex-row justify-between gap-3 text-[color:var(--dim)] text-[12px] font-mono">
-      <span>© 2026 ZXTouch Rootless · MIT-spirited open source</span>
+    <div class="flex flex-col sm:flex-row justify-between gap-3" style="color:var(--dim);font-size:12px;font-family:'JetBrains Mono'">
+      <span>© 2026 ZXTouch Rootless · open source</span>
       <span>For automation &amp; accessibility on devices you own.</span>
     </div>
   </div>
 </footer>
 
 <script>
-/* ════════ Lenis + GSAP wiring ════════ */
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isMobile = matchMedia('(max-width: 880px)').matches;
 gsap.registerPlugin(ScrollTrigger);
+
+/* Lenis */
+const navEl = document.getElementById('nav'), bar = document.getElementById('scrollBar');
+function updateScrollUI(y) {
+  navEl.classList.toggle('scrolled', y > 24);
+  const h = document.documentElement.scrollHeight - innerHeight;
+  bar.style.width = (h > 0 ? y / h * 100 : 0) + '%';
+}
 
 if (!reduced && typeof Lenis !== 'undefined') {
   const lenis = new Lenis({ lerp: 0.1, smoothWheel: true });
-  lenis.on('scroll', ScrollTrigger.update);
+  lenis.on('scroll', e => {
+    ScrollTrigger.update();
+    updateScrollUI(e.scroll);
+  });
+  ScrollTrigger.scrollerProxy(document.documentElement, {
+    scrollTop(value) {
+      if (arguments.length) lenis.scrollTo(value, { immediate: true });
+      return lenis.scroll;
+    },
+    getBoundingClientRect() {
+      return { top: 0, left: 0, width: innerWidth, height: innerHeight };
+    },
+  });
+  ScrollTrigger.addEventListener('refresh', () => lenis.resize());
   gsap.ticker.add(t => lenis.raf(t * 1000));
   gsap.ticker.lagSmoothing(0);
+  window.__lenis = lenis;
   document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
     const t = document.querySelector(a.getAttribute('href'));
-    if (t) { e.preventDefault(); lenis.scrollTo(t, { offset: -78, duration: 1.2 }); }
+    if (t) { e.preventDefault(); lenis.scrollTo(t, { offset: -72, duration: 1.1 }); }
   }));
+  ScrollTrigger.refresh();
+} else {
+  addEventListener('scroll', () => updateScrollUI(scrollY), { passive: true });
 }
 
-/* nav scrolled state */
-addEventListener('scroll', () => document.getElementById('nav').classList.toggle('scrolled', scrollY > 24), { passive: true });
+/* mobile drawer */
+const drawer = document.getElementById('drawer');
+const openD = () => drawer.classList.add('open');
+const closeD = () => drawer.classList.remove('open');
+document.getElementById('burger').addEventListener('click', openD);
+document.getElementById('drawerX').addEventListener('click', closeD);
+drawer.querySelectorAll('[data-close]').forEach(a => a.addEventListener('click', () => setTimeout(closeD, 60)));
+
+/* marquee build */
+const mqItems = ['MULTITOUCH × 19','PYTHON SCRIPTING','RECORD & PLAYBACK','IMAGE MATCHING','ON-DEVICE OCR','SHORTCUTS','ROOT SHELL','REMOTE CONTROL','COLOR PICKER','SOCKET API · :6000'];
+const star = '<svg width="9" height="9" viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.5 4.5L12 6 7.5 7.5 6 12 4.5 7.5 0 6l4.5-1.5z"/></svg>';
+const trackHTML = mqItems.map(t => `<span class="mq-item">${star}${t}</span>`).join('');
+document.getElementById('mq').innerHTML = `<div class="marquee-track">${trackHTML}</div><div class="marquee-track" aria-hidden="true">${trackHTML}</div>`;
 
 /* hero entrance */
-gsap.to('.reveal-line > span', { y: 0, duration: 1.1, ease: 'power4.out', stagger: 0.12, delay: 0.15 });
-gsap.from('[data-hero-fade]', { opacity: 0, y: 26, duration: 1, ease: 'power3.out', stagger: 0.09, delay: 0.45 });
+gsap.to('.reveal-line > span', { y: 0, duration: 1.1, ease: 'power4.out', stagger: 0.1, delay: 0.15 });
+gsap.from('[data-hero-fade]', { opacity: 0, y: 26, duration: 1, ease: 'power3.out', stagger: 0.08, delay: 0.4 });
 
-/* scroll reveals */
+/* reveals */
 document.querySelectorAll('[data-reveal]').forEach(el => {
-  gsap.from(el, { opacity: 0, y: 34, duration: 0.9, ease: 'power3.out',
-    scrollTrigger: { trigger: el, start: 'top 88%' } });
+  gsap.from(el, { opacity: 0, y: 32, duration: 0.85, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 90%' } });
 });
 
 /* counters */
 document.querySelectorAll('[data-count]').forEach(el => {
   const end = +el.dataset.count;
-  ScrollTrigger.create({ trigger: el, start: 'top 90%', once: true, onEnter: () => {
-    gsap.to({ v: 0 }, { v: end, duration: 1.6, ease: 'power2.out',
-      onUpdate: function(){ el.textContent = Math.round(this.targets()[0].v); } });
+  ScrollTrigger.create({ trigger: el, start: 'top 92%', once: true, onEnter: () => {
+    gsap.to({ v: 0 }, { v: end, duration: 1.6, ease: 'power2.out', onUpdate: function(){ el.textContent = Math.round(this.targets()[0].v); } });
   }});
 });
 
@@ -773,15 +792,23 @@ document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('cl
   const pre = btn.closest('.code-window').querySelector('pre');
   navigator.clipboard.writeText(pre.innerText).then(() => {
     btn.textContent = 'COPIED ✓'; btn.classList.add('ok');
-    setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('ok'); }, 1600);
+    setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('ok'); }, 1500);
   });
 }));
 
 /* install tabs */
-document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
-  document.querySelectorAll('[data-tabpane]').forEach(p =>
-    p.classList.toggle('hidden', p.dataset.tabpane !== btn.dataset.tab));
+document.querySelectorAll('[data-tab]').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('[data-tabpane]').forEach(p => p.classList.toggle('hidden', p.dataset.tabpane !== btn.dataset.tab));
+}));
+
+/* api filter */
+const apiBtns = document.querySelectorAll('#apiFilter .pill-tab');
+apiBtns.forEach(btn => btn.addEventListener('click', () => {
+  apiBtns.forEach(b => b.classList.toggle('active', b === btn));
+  const f = btn.dataset.f;
+  document.querySelectorAll('#apiBody tr').forEach(tr =>
+    tr.style.display = (f === 'all' || tr.dataset.cat === f) ? '' : 'none');
 }));
 
 /* docs scroll-spy */
@@ -789,111 +816,83 @@ const docLinks = [...document.querySelectorAll('#docNav .doc-link')];
 docLinks.forEach(l => {
   const sec = document.querySelector(l.getAttribute('href'));
   if (!sec) return;
-  ScrollTrigger.create({ trigger: sec, start: 'top 45%', end: 'bottom 45%',
+  ScrollTrigger.create({ trigger: sec, start: 'top 40%', end: 'bottom 40%',
     onToggle: s => { if (s.isActive) { docLinks.forEach(x => x.classList.remove('active')); l.classList.add('active'); } } });
 });
 
-/* ════════ hero phone: parallax tilt + gesture replay ════════ */
+/* phone tilt + float */
 const phone = document.getElementById('phone');
 if (phone && !reduced) {
   const stage = phone.closest('.phone-stage');
-  stage.addEventListener('mousemove', e => {
-    const r = stage.getBoundingClientRect();
-    const rx = ((e.clientY - r.top) / r.height - 0.5) * -8;
-    const ry = ((e.clientX - r.left) / r.width - 0.5) * 10;
-    gsap.to(phone, { rotateX: rx, rotateY: ry, duration: 0.7, ease: 'power2.out' });
-  });
-  stage.addEventListener('mouseleave', () => gsap.to(phone, { rotateX: 0, rotateY: 0, duration: 1, ease: 'elastic.out(1,0.6)' }));
+  if (!isMobile) {
+    stage.addEventListener('mousemove', e => {
+      const r = stage.getBoundingClientRect();
+      gsap.to(phone, { rotateX: ((e.clientY - r.top)/r.height - .5) * -8, rotateY: ((e.clientX - r.left)/r.width - .5) * 10, duration: .7, ease: 'power2.out' });
+    });
+    stage.addEventListener('mouseleave', () => gsap.to(phone, { rotateX: 0, rotateY: 0, duration: 1, ease: 'elastic.out(1,.6)' }));
+  }
   gsap.to(phone, { y: -12, duration: 3.2, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-  document.querySelectorAll('.float-chip').forEach((c, i) =>
-    gsap.to(c, { y: i % 2 ? 10 : -10, duration: 2.6 + i * 0.5, ease: 'sine.inOut', yoyo: true, repeat: -1 }));
+  document.querySelectorAll('.float-chip').forEach((c, i) => gsap.to(c, { y: i % 2 ? 10 : -10, duration: 2.6 + i * .5, ease: 'sine.inOut', yoyo: true, repeat: -1 }));
 }
 
-/* gesture replay: dot follows a looped path, leaving a fading trail + rings */
+/* phone gesture replay */
 (function gestureLoop(){
-  const dot = document.getElementById('touchDot');
-  const screen = dot ? dot.parentElement : null;
-  const trail = document.getElementById('trail');
+  const dot = document.getElementById('touchDot'); const trail = document.getElementById('trail');
   if (!dot || !trail || reduced) return;
-  const ctx = trail.getContext('2d');
-  let pts = [];
-  function fit(){ trail.width = trail.offsetWidth * 2; trail.height = trail.offsetHeight * 2; ctx.scale(2,2); }
+  const screen = dot.parentElement, ctx = trail.getContext('2d'); let pts = [];
+  function fit(){ trail.width = trail.offsetWidth*2; trail.height = trail.offsetHeight*2; ctx.setTransform(2,0,0,2,0,0); }
   fit(); addEventListener('resize', fit);
-
-  // waypoints in % of screen (x, y, pause-ms)
-  const path = [ [50,78,300],[50,42,0],[50,42,420],[26,30,0],[26,30,380],[74,30,0],[74,30,380],[50,60,0],[50,60,600] ];
+  const path = [[50,78,300],[50,42,0],[50,42,420],[26,30,0],[26,30,380],[74,30,0],[74,30,380],[50,60,0],[50,60,600]];
   let seg = 0, t = 0, last = performance.now();
-
-  function ring(xp, yp){
-    const r = document.createElement('div');
-    r.className = 'touch-ring';
-    r.style.cssText = `left:${xp}%;top:${yp}%;width:20px;height:20px;margin:-10px 0 0 -10px;opacity:1`;
-    screen.appendChild(r);
-    gsap.to(r, { width: 64, height: 64, margin: '-32px 0 0 -32px', opacity: 0, duration: 0.8, ease: 'power2.out', onComplete: () => r.remove() });
-  }
-
+  function ring(xp, yp){ const r = document.createElement('div'); r.className = 'touch-ring';
+    r.style.cssText = `left:${xp}%;top:${yp}%;width:20px;height:20px;margin:-10px 0 0 -10px;opacity:1`; screen.appendChild(r);
+    gsap.to(r, { width: 64, height: 64, margin: '-32px 0 0 -32px', opacity: 0, duration: .8, ease: 'power2.out', onComplete: () => r.remove() }); }
   function frame(now){
-    const dt = now - last; last = now;
-    const a = path[seg], b = path[(seg + 1) % path.length];
-    const pause = a[2];
-    if (t < pause) { t += dt; }
-    else {
-      const travel = 700;
-      const p = Math.min((t - pause) / travel, 1);
-      const e = p < .5 ? 2*p*p : 1 - Math.pow(-2*p+2,2)/2;
-      const x = a[0] + (b[0]-a[0]) * e, y = a[1] + (b[1]-a[1]) * e;
-      dot.style.left = x + '%'; dot.style.top = y + '%'; dot.style.opacity = 1;
-      pts.push({ x: x/100*trail.offsetWidth, y: y/100*trail.offsetHeight, a: 1 });
-      t += dt;
-      if (p >= 1) { seg = (seg + 1) % path.length; t = 0; if (path[seg][2] > 350) ring(b[0], b[1]); }
-    }
-    // draw trail
-    ctx.clearRect(0,0,trail.offsetWidth,trail.offsetHeight);
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    for (let i = 1; i < pts.length; i++) {
-      ctx.strokeStyle = `rgba(0,240,255,${pts[i].a * 0.5})`;
-      ctx.lineWidth = 2.5 * pts[i].a;
-      ctx.beginPath(); ctx.moveTo(pts[i-1].x, pts[i-1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
-    }
-    pts.forEach(p => p.a -= 0.016); pts = pts.filter(p => p.a > 0);
-    requestAnimationFrame(frame);
+    const dt = now - last; last = now; const a = path[seg], b = path[(seg+1)%path.length];
+    if (t < a[2]) t += dt;
+    else { const p = Math.min((t - a[2]) / 700, 1); const e = p<.5 ? 2*p*p : 1-Math.pow(-2*p+2,2)/2;
+      const x = a[0]+(b[0]-a[0])*e, y = a[1]+(b[1]-a[1])*e;
+      dot.style.left = x+'%'; dot.style.top = y+'%'; dot.style.opacity = 1;
+      pts.push({ x: x/100*trail.offsetWidth, y: y/100*trail.offsetHeight, a: 1 }); t += dt;
+      if (p >= 1) { seg = (seg+1)%path.length; t = 0; if (path[seg][2] > 350) ring(b[0], b[1]); } }
+    ctx.clearRect(0,0,trail.offsetWidth,trail.offsetHeight); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let i = 1; i < pts.length; i++){ ctx.strokeStyle = `rgba(0,240,255,${pts[i].a*.5})`; ctx.lineWidth = 2.5*pts[i].a;
+      ctx.beginPath(); ctx.moveTo(pts[i-1].x, pts[i-1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke(); }
+    pts.forEach(p => p.a -= .016); pts = pts.filter(p => p.a > 0); requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 })();
 
-/* ════════ hero particle field ════════ */
-(function particles(){
-  const cv = document.getElementById('particles');
-  if (!cv || reduced) return;
-  const ctx = cv.getContext('2d');
-  let W, H, ps;
-  function init(){
-    W = cv.width = cv.offsetWidth; H = cv.height = cv.offsetHeight;
-    const n = Math.min(70, Math.floor(W * H / 22000));
-    ps = Array.from({ length: n }, () => ({
-      x: Math.random()*W, y: Math.random()*H,
-      vx: (Math.random()-.5)*.25, vy: (Math.random()-.5)*.25,
-      r: Math.random()*1.4+.4
-    }));
-  }
+/* hero interactive touch field — particles + cursor ripples = "touch anything" */
+(function touchField(){
+  const cv = document.getElementById('touchField'); if (!cv || reduced) return;
+  const ctx = cv.getContext('2d'); let W, H, ps, ripples = []; const mouse = { x: -999, y: -999 };
+  function init(){ W = cv.width = cv.offsetWidth; H = cv.height = cv.offsetHeight;
+    const n = Math.min(isMobile ? 34 : 76, Math.floor(W*H/20000));
+    ps = Array.from({length:n}, () => ({ x: Math.random()*W, y: Math.random()*H, vx:(Math.random()-.5)*.22, vy:(Math.random()-.5)*.22, r: Math.random()*1.5+.5 })); }
   init(); addEventListener('resize', init);
+  const sec = document.getElementById('top');
+  sec.addEventListener('pointermove', e => { const r = cv.getBoundingClientRect(); mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; }, { passive: true });
+  sec.addEventListener('pointerleave', () => { mouse.x = mouse.y = -999; });
+  sec.addEventListener('pointerdown', e => { const r = cv.getBoundingClientRect(); ripples.push({ x: e.clientX-r.left, y: e.clientY-r.top, rad: 0, a: 1 }); }, { passive: true });
   (function draw(){
     ctx.clearRect(0,0,W,H);
-    for (const p of ps) {
+    for (const p of ps){
       p.x += p.vx; p.y += p.vy;
-      if (p.x < 0 || p.x > W) p.vx *= -1;
-      if (p.y < 0 || p.y > H) p.vy *= -1;
-      ctx.fillStyle = 'rgba(0,240,255,.35)';
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+      if (p.x<0||p.x>W) p.vx*=-1; if (p.y<0||p.y>H) p.vy*=-1;
+      const dx = p.x-mouse.x, dy = p.y-mouse.y, d2 = dx*dx+dy*dy;
+      if (d2 < 14000){ const f = (1-d2/14000)*1.6; p.x += dx/Math.sqrt(d2+1)*f; p.y += dy/Math.sqrt(d2+1)*f; }
+      ctx.fillStyle = 'rgba(0,240,255,.4)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
     }
-    for (let i = 0; i < ps.length; i++) for (let j = i+1; j < ps.length; j++) {
-      const dx = ps[i].x - ps[j].x, dy = ps[i].y - ps[j].y, d = dx*dx + dy*dy;
-      if (d < 16000) {
-        ctx.strokeStyle = `rgba(0,240,255,${(1 - d/16000) * .08})`;
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(ps[i].x, ps[i].y); ctx.lineTo(ps[j].x, ps[j].y); ctx.stroke();
-      }
-    }
+    for (let i=0;i<ps.length;i++) for (let j=i+1;j<ps.length;j++){
+      const dx = ps[i].x-ps[j].x, dy = ps[i].y-ps[j].y, d = dx*dx+dy*dy;
+      if (d < 15000){ ctx.strokeStyle = `rgba(0,240,255,${(1-d/15000)*.085})`; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(ps[i].x,ps[i].y); ctx.lineTo(ps[j].x,ps[j].y); ctx.stroke(); } }
+    if (mouse.x > -900){ ctx.strokeStyle = 'rgba(0,240,255,.5)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(mouse.x, mouse.y, 5, 0, 7); ctx.stroke(); }
+    ripples.forEach(r => { r.rad += 4; r.a -= .02; ctx.strokeStyle = `rgba(0,240,255,${r.a})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.rad, 0, 7); ctx.stroke(); });
+    ripples = ripples.filter(r => r.a > 0);
     requestAnimationFrame(draw);
   })();
 })();

@@ -14,8 +14,8 @@ Discord: https://discord.gg/acSXfyz
 
 | Jailbreak | iOS Version | Status |
 |-----------|-------------|--------|
-| Dopamine (rootless) | 16.4.1 | ✅ Working |
-| Roothide / Serotonin | 15.8 | ✅ Working |
+| Dopamine (rootless) | 16.4.1, 16.6.1 | ✅ Working |
+| Roothide / Serotonin | 15.8, 16.6.1 | ✅ Working |
 
 ---
 

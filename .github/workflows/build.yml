@@ -54,6 +54,11 @@ jobs:
           echo "App found at: $APP"
           brew install ldid 2>/dev/null || true
           ldid -Szxtouch/app-entitlements.plist "$APP/zxtouch"
+          EXT="$APP/PlugIns/shortcutext.appex/shortcutext"
+          if [ -f "$EXT" ]; then
+            ldid -Szxtouch/shortcutext-entitlements.plist "$EXT"
+            echo "Signed extension"
+          fi
           rm -rf layout/Applications/zxtouch.app
           cp -r "$APP" layout/Applications/zxtouch.app
           echo "App installed to layout"

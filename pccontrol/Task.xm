@@ -165,7 +165,19 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
     }
     else if (taskType == TASK_TEMPLATE_MATCH)
     {
-        notifyClient((UInt8*)"-1;;template match disabled in rootless build (opencv2 unavailable)\r\n", writeStreamRef);
+        @autoreleasepool {
+            NSError *err = nil;
+            CGRect result = screenMatchFromRawData(eventData, &err);
+            if (err)
+            {
+                notifyClient((UInt8*)[[err localizedDescription] UTF8String], writeStreamRef);
+            }
+            else
+            {
+                notifyClient((UInt8*)[[NSString stringWithFormat:@"0;;%.2f;;%.2f;;%.2f;;%.2f\r\n",
+                    result.origin.x, result.origin.y, result.size.width, result.size.height] UTF8String], writeStreamRef);
+            }
+        }
     }
     else if (taskType == TASK_SHOW_TOAST)
     {

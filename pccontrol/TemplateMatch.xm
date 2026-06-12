@@ -1,226 +1,216 @@
-//
-//  TemplateMatch.cpp
-//  OpenCVTest
-//
-//  Created by Yun CHEN on 2018/2/8.
-//  Copyright © 2018年 Yun CHEN. All rights reserved.
-//
-
-
 #import "TemplateMatch.h"
-#include <vector>
+#import <Accelerate/Accelerate.h>
+#import <UIKit/UIKit.h>
 #include <math.h>
 
+// Convert a CGImage to a grayscale float buffer (caller must free)
+static float* cgImageToGrayscaleFloat(CGImageRef img, size_t *outWidth, size_t *outHeight) {
+    size_t w = CGImageGetWidth(img);
+    size_t h = CGImageGetHeight(img);
+    *outWidth = w;
+    *outHeight = h;
 
+    size_t bytesPerRow = w * 4;
+    unsigned char *rgba = (unsigned char *)malloc(bytesPerRow * h);
+    if (!rgba) return NULL;
 
-using namespace cv;
-using namespace std;
+    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+    CGContextRef ctx = CGBitmapContextCreate(rgba, w, h, 8, bytesPerRow, cs,
+                                             kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+    CGColorSpaceRelease(cs);
+    CGContextDrawImage(ctx, CGRectMake(0, 0, w, h), img);
+    CGContextRelease(ctx);
 
+    float *gray = (float *)malloc(w * h * sizeof(float));
+    if (!gray) { free(rgba); return NULL; }
 
-
-@interface TemplateMatch() {
-    UIImage *_templateImage;
-    vector<Mat> _scaledTempls;
-    int maxTryTimes;
-    float acceptableValue;
-    float scaleRation;
+    // Luminance: 0.299R + 0.587G + 0.114B
+    for (size_t i = 0; i < w * h; i++) {
+        gray[i] = 0.299f * rgba[i*4] + 0.587f * rgba[i*4+1] + 0.114f * rgba[i*4+2];
+    }
+    free(rgba);
+    return gray;
 }
 
+// Load an image file to grayscale float buffer
+static float* loadImageToGrayscaleFloat(NSString *path, size_t *outWidth, size_t *outHeight) {
+    UIImage *ui = [UIImage imageWithContentsOfFile:path];
+    if (!ui) return NULL;
+    CGImageRef cg = ui.CGImage;
+    if (!cg) return NULL;
+    return cgImageToGrayscaleFloat(cg, outWidth, outHeight);
+}
+
+// Resize a float buffer using vImage
+static float* resizeFloat(const float *src, size_t srcW, size_t srcH, size_t dstW, size_t dstH) {
+    float *dst = (float *)malloc(dstW * dstH * sizeof(float));
+    if (!dst) return NULL;
+
+    vImage_Buffer srcBuf = { (void*)src, srcH, srcW, srcW * sizeof(float) };
+    vImage_Buffer dstBuf = { dst,        dstH, dstW, dstW * sizeof(float) };
+    vImageScale_PlanarF(&srcBuf, &dstBuf, NULL, kvImageEdgeExtend);
+    return dst;
+}
+
+// Normalized cross-correlation score for one placement using vDSP
+static float nccScore(const float *img, size_t imgW,
+                      const float *tmpl, size_t tw, size_t th,
+                      size_t x, size_t y) {
+    size_t n = tw * th;
+    float *patch = (float *)malloc(n * sizeof(float));
+    if (!patch) return -1.0f;
+
+    for (size_t row = 0; row < th; row++)
+        memcpy(patch + row * tw, img + (y + row) * imgW + x, tw * sizeof(float));
+
+    float patchMean, tmplMean;
+    vDSP_meanv(patch, 1, &patchMean, n);
+    vDSP_meanv(tmpl,  1, &tmplMean,  n);
+
+    // Subtract means
+    float negPatchMean = -patchMean, negTmplMean = -tmplMean;
+    vDSP_vsadd(patch, 1, &negPatchMean, patch, 1, n);
+    float *tmplCentered = (float *)malloc(n * sizeof(float));
+    memcpy(tmplCentered, tmpl, n * sizeof(float));
+    vDSP_vsadd(tmplCentered, 1, &negTmplMean, tmplCentered, 1, n);
+
+    float dotProduct, patchNorm, tmplNorm;
+    vDSP_dotpr(patch, 1, tmplCentered, 1, &dotProduct, n);
+    vDSP_svesq(patch,        1, &patchNorm, n);
+    vDSP_svesq(tmplCentered, 1, &tmplNorm,  n);
+
+    free(patch);
+    free(tmplCentered);
+
+    float denom = sqrtf(patchNorm * tmplNorm);
+    if (denom < 1e-6f) return 0.0f;
+    return dotProduct / denom;
+}
+
+@interface TemplateMatch() {
+    int _maxTryTimes;
+    float _acceptableValue;
+    float _scaleRation;
+}
 @end
-
-
 
 @implementation TemplateMatch
 
-//static float resizeRatio = 0.35;              //原图缩放比例，越小性能越好，但识别度越低
-//static int maxTryTimes = 4;                   //未达到预定识别度时，再尝试的次数限制
-//static float acceptableValue = 0.9;           //达到此识别度才被认为正确
-//static float scaleRation = 0.75;              //当模板未被识别时，尝试放大/缩小模板。 指定每次模板缩小的比例
-
-- (void)setScaleRation:(float)sr {
-    scaleRation = sr;
+- (instancetype)init {
+    self = [super init];
+    _maxTryTimes = 4;
+    _acceptableValue = 0.8f;
+    _scaleRation = 0.8f;
+    return self;
 }
 
-- (void)setAcceptableValue:(float)av {
-    acceptableValue = av;
-}
-
-- (void)setMaxTryTimes:(int)mtt {
-    maxTryTimes = mtt;
-}
+- (void)setAcceptableValue:(float)av { _acceptableValue = av; }
+- (void)setMaxTryTimes:(int)mtt     { _maxTryTimes = mtt; }
+- (void)setScaleRation:(float)sr    { _scaleRation = sr; }
 
 - (CGRect)templateMatchWithCGImage:(CGImageRef)img templatePath:(NSString*)templatePath error:(NSError**)err {
-    CGColorSpaceRef colorSpace = CGImageGetColorSpace(img);
-    CGFloat cols = CGImageGetWidth(img);
-    CGFloat rows = CGImageGetHeight(img);
-
-    cv::Mat screenMat(rows, cols, CV_8UC4); // 8 bits per component, 4 channels
-
-    
-    CGContextRef contextRef = CGBitmapContextCreate(screenMat.data,                 // Pointer to backing data
-                                                    cols,                      // Width of bitmap
-                                                    rows,                     // Height of bitmap
-                                                    8,                          // Bits per component
-                                                    screenMat.step[0],              // Bytes per row
-                                                    colorSpace,                 // Colorspace
-                                                    kCGImageAlphaNoneSkipLast |
-                                                    kCGBitmapByteOrderDefault); // Bitmap info flags
-
-    CGContextDrawImage(contextRef, CGRectMake(0, 0, cols, rows), img);
-
-    CGContextRelease(contextRef);
-    CGColorSpaceRelease(colorSpace);
-    
-    Mat templ = imread([templatePath UTF8String], CV_LOAD_IMAGE_GRAYSCALE); //[templatePath UTF8String]
-    if (templ.cols == 0 && templ.rows == 0)
-    {
-        *err = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"-1;;Read failed! Check permission or file existance. The height and width of the template image is 0! Template path: %@\r\n", templatePath]}];
-        return CGRect();    
-    }
-    cv::Mat greyMat;
-    cv::cvtColor(screenMat, greyMat, COLOR_RGBA2GRAY);
-
-    return [self matchWithMat:greyMat andTemplate:templ];
-}
-
-- (CGRect)templateMatchWithPath:(NSString*)imgPath templatePath:(NSString*)templatePath error:(NSError**)err {
-    Mat image = imread([imgPath UTF8String], CV_LOAD_IMAGE_GRAYSCALE); //[imgPath UTF8String]
-    Mat templ = imread([templatePath UTF8String], CV_LOAD_IMAGE_GRAYSCALE); //[templatePath UTF8String]
-    
-    if (image.cols == 0 && image.rows == 0)
-    {
-        *err = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"-1;;Read failed! Check permission or file existance. The height and width of the screenshot photo is 0! Screenshot path: %@\r\n", imgPath]}];
-        return CGRect();    
-    }
-    if (templ.cols == 0 && templ.rows == 0)
-    {
-        *err = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"-1;;Read failed! Check permission or file existance. The height and width of the template image is 0! Template path: %@\r\n", templatePath]}];
-        return CGRect();    
+    size_t imgW, imgH;
+    float *imgGray = cgImageToGrayscaleFloat(img, &imgW, &imgH);
+    if (!imgGray) {
+        *err = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999
+                userInfo:@{NSLocalizedDescriptionKey:@"-1;;image_match: failed to convert screenshot to grayscale\r\n"}];
+        return CGRectZero;
     }
 
-    return [self matchWithMat:image andTemplate:templ];
-}
-
-//uncompleted
-- (CGRect)templateMatchWithUIImage:(UIImage*)img template:(UIImage*)templ {
-    //return [self matchWithMat:[self cvMatFromUIImage:img] andTemplate:[self cvMatFromUIImage:templ]];
-    return CGRect();
-}
-
-//调用OpenCV进行匹配
-//此方法具体解释参考OpenCV官方文档: https://docs.opencv.org/3.2.0/de/da9/tutorial_template_matching.html
-- (CGRect)matchWithMat:(Mat)img andTemplate:(Mat)templ {
-    double minVal;
-    double maxVal;
-    cv::Point minLoc;
-    cv::Point maxLoc;
-
-    _scaledTempls.push_back(templ);
-
-    Mat templResized;
-
-    //由于模板图和原图大小比例不一致，需要放大缩小模板图，来多次比较。所以建立不同比例的模板图。
-    for(int i=0;i<maxTryTimes;i++) {
-        //放大模板图
-        float powIncreaRation = pow(2 - scaleRation, i+1);
-        resize(templ, templResized, cv::Size(0, 0), powIncreaRation, powIncreaRation);
-        _scaledTempls.push_back(templResized); //由于push_back方法执行值拷贝，所以可以复用templResized变量。
-
-        //缩小模板图
-        float powReduceRation = pow(scaleRation, i+1);
-        NSLog(@"powReduceRation: %f", powReduceRation);
-        resize(templ, templResized, cv::Size(0, 0), powReduceRation, powReduceRation);
-        _scaledTempls.push_back(templResized);
-
+    size_t tmplW, tmplH;
+    float *tmplGray = loadImageToGrayscaleFloat(templatePath, &tmplW, &tmplH);
+    if (!tmplGray) {
+        free(imgGray);
+        *err = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999
+                userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:
+                    @"-1;;image_match: failed to load template: %@\r\n", templatePath]}];
+        return CGRectZero;
     }
 
-    //匹配不同大小的模板图
+    CGRect best = CGRectZero;
+    float bestScore = -1.0f;
+    size_t bestTW = tmplW, bestTH = tmplH;
 
-    //创建结果矩阵，用于存放单次匹配到的位置信息(单次会匹配到很多，后面根据不同算法取最大或最小值)
-        //匹配不同大小的模板图
-    for (int i=0; i < _scaledTempls.size(); i++) {
-        Mat currentTemplate = _scaledTempls[i];
+    // Try original size + scaled variants (same logic as original OpenCV version)
+    NSMutableArray *scales = [NSMutableArray array];
+    [scales addObject:@(1.0f)];
+    for (int i = 0; i < _maxTryTimes; i++) {
+        [scales addObject:@(powf(2.0f - _scaleRation, i + 1))];
+        [scales addObject:@(powf(_scaleRation, i + 1))];
+    }
 
-        int result_cols = img.cols - currentTemplate.cols + 1;
-        int result_rows = img.rows - currentTemplate.rows + 1;
-        Mat result;
-        result.create(result_rows, result_cols, CV_32FC1);
+    for (NSNumber *scaleNum in scales) {
+        float scale = scaleNum.floatValue;
+        size_t tw = (size_t)(tmplW * scale);
+        size_t th = (size_t)(tmplH * scale);
+        if (tw < 2 || th < 2 || tw >= imgW || th >= imgH) continue;
 
-        //OpenCV匹配
-        matchTemplate(img, currentTemplate, result, TM_CCOEFF_NORMED);
-
-        //整理出本次匹配的最大最小值
-        minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, Mat());
-
-        //TM_CCOEFF_NORMED算法，取最大值为最佳匹配
-        //当最大值符合要求，认为匹配成功
-
-        if (maxVal >= acceptableValue) {
-            //NSLog(@"matched point:%d,%d maxVal:%f, tried times:%d",maxLoc.x,maxLoc.y,maxVal,i + 1);
-            NSLog(@"com.zjx.springboard: match success. x: %d, y: %d. width: %d, height: %d", maxLoc.x, maxLoc.y, currentTemplate.cols, currentTemplate.rows);
-            return CGRectMake(maxLoc.x, maxLoc.y, currentTemplate.cols, currentTemplate.rows);
+        float *tmplScaled;
+        if (scale == 1.0f) {
+            tmplScaled = tmplGray;
+        } else {
+            tmplScaled = resizeFloat(tmplGray, tmplW, tmplH, tw, th);
+            if (!tmplScaled) continue;
         }
+
+        // Step through image — skip every 2px for speed, refine around best
+        size_t step = MAX(1, MIN(tw, th) / 8);
+        for (size_t y = 0; y + th <= imgH; y += step) {
+            for (size_t x = 0; x + tw <= imgW; x += step) {
+                float score = nccScore(imgGray, imgW, tmplScaled, tw, th, x, y);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = CGRectMake(x, y, tw, th);
+                    bestTW = tw; bestTH = th;
+                }
+            }
+        }
+
+        if (scale != 1.0f) free(tmplScaled);
+
+        if (bestScore >= _acceptableValue) break;
     }
-    
-    //未匹配到，则返回空区域
-    NSLog(@"com.zjx.springboard: match failed");
-    return CGRect();
-}
 
-//UIImage转为OpenCV灰图矩阵
-- (Mat)cvMatGrayFromUIImage:(UIImage *)image {
-    Mat img;
-    Mat img_color = [self cvMatFromUIImage:image];
-    cvtColor(img_color, img, COLOR_BGR2GRAY);
-    
-    return img;
-}
+    free(imgGray);
+    free(tmplGray);
 
-//UIImage转为OpenCV矩阵 BUGS exists for color picker!!! Do NOT USE THIS
-- (Mat)cvMatFromUIImage:(UIImage *)image {
-    CGColorSpaceRef colorSpace = CGImageGetColorSpace(image.CGImage);
-    CGFloat cols = image.size.width;
-    CGFloat rows = image.size.height;
-    
-    Mat cvMat(rows, cols, CV_8UC4); // 8位图, 4通道 (颜色 通道 + alpha)
-    
-    CGContextRef contextRef = CGBitmapContextCreate(cvMat.data,                 // 数据来源
-                                                    cols,                       // 宽
-                                                    rows,                       // 高
-                                                    8,                          // 8位
-                                                    cvMat.step[0],              // 每行字节
-                                                    colorSpace,                 // 颜色空间
-                                                    kCGImageAlphaNoneSkipLast |
-                                                    kCGBitmapByteOrderDefault); // Bitmap图信息
-    
-    CGContextDrawImage(contextRef, CGRectMake(0, 0, cols, rows), image.CGImage);
-    CGContextRelease(contextRef);
-    
-    return cvMat;
-}
+    if (bestScore >= _acceptableValue) {
+        // Refine at step=1 around best location
+        size_t rx = (best.origin.x > 4) ? best.origin.x - 4 : 0;
+        size_t ry = (best.origin.y > 4) ? best.origin.y - 4 : 0;
+        size_t rxMax = MIN(rx + bestTW + 8, imgW - bestTW);
+        size_t ryMax = MIN(ry + bestTH + 8, imgH - bestTH);
+        // Reload for refinement pass
+        float *imgGray2 = cgImageToGrayscaleFloat(img, &imgW, &imgH);
+        float *tmplGray2 = loadImageToGrayscaleFloat(templatePath, &tmplW, &tmplH);
+        if (imgGray2 && tmplGray2) {
+            float *tmplS = (bestTW == tmplW && bestTH == tmplH) ? tmplGray2
+                : resizeFloat(tmplGray2, tmplW, tmplH, bestTW, bestTH);
+            for (size_t y = ry; y <= ryMax; y++) {
+                for (size_t x = rx; x <= rxMax; x++) {
+                    float score = nccScore(imgGray2, imgW, tmplS, bestTW, bestTH, x, y);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = CGRectMake(x, y, bestTW, bestTH);
+                    }
+                }
+            }
+            if (tmplS != tmplGray2) free(tmplS);
+        }
+        if (imgGray2) free(imgGray2);
+        if (tmplGray2) free(tmplGray2);
 
-//Buffer转为OpenCV矩阵
-- (Mat)cvMatFromBuffer:(CMSampleBufferRef)buffer {
-    CVImageBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(buffer);
-    CVPixelBufferLockBaseAddress( pixelBuffer, 0 );
-    
-    //取得高宽，以及数据起始地址
-    int bufferWidth = (int)CVPixelBufferGetWidth(pixelBuffer);
-    int bufferHeight = (int)CVPixelBufferGetHeight(pixelBuffer);
-    unsigned char *pixel = (unsigned char *)CVPixelBufferGetBaseAddress(pixelBuffer);
-    
-    //转为OpenCV矩阵
-    Mat mat = Mat(bufferHeight,bufferWidth,CV_8UC4,pixel,CVPixelBufferGetBytesPerRow(pixelBuffer));
-    
-    //结束处理
-    CVPixelBufferUnlockBaseAddress( pixelBuffer, 0 );
-    
-    //转为灰度图矩阵
-    Mat matGray;
-    cvtColor(mat, matGray, COLOR_BGR2GRAY);
-    
-    return matGray;
-}
+        NSLog(@"com.zjx.springboard: image_match success. x:%.0f y:%.0f w:%.0f h:%.0f score:%.3f",
+              best.origin.x, best.origin.y, best.size.width, best.size.height, bestScore);
+        return best;
+    }
 
+    NSLog(@"com.zjx.springboard: image_match failed. best score: %.3f", bestScore);
+    *err = [NSError errorWithDomain:@"com.zjx.zxtouchsp" code:999
+            userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:
+                @"-1;;image_match: no match found (best score: %.3f, required: %.3f)\r\n",
+                bestScore, _acceptableValue]}];
+    return CGRectZero;
+}
 
 @end

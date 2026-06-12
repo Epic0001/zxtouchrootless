@@ -2,6 +2,7 @@
 #include <roothide.h>
 #include "Touch.h"
 #include "ColorPicker.h"
+#include "ScreenMatch.h"
 #include "Process.h"
 #include "AlertBox.h"
 #include "Record.h"

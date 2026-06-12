@@ -82,7 +82,22 @@
 		{
             NSString *content = data[@"task_content"] ?: @"";
             dispatch_async(dispatch_get_main_queue(), ^{
-                if ([self respondsToSelector:@selector(insertText:)])
+                // Try first responder directly (more reliable on iOS 16)
+                BOOL inserted = NO;
+                for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+                    if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+                    for (UIWindow *win in ((UIWindowScene *)scene).windows) {
+                        UIResponder *r = [win performSelector:@selector(firstResponder)];
+                        if (r && [r respondsToSelector:@selector(insertText:)]) {
+                            [(id)r insertText:content];
+                            inserted = YES;
+                            break;
+                        }
+                    }
+                    if (inserted) break;
+                }
+                // Fallback to UIKeyboardImpl
+                if (!inserted && [self respondsToSelector:@selector(insertText:)])
                     [self insertText:content];
             });
 		}

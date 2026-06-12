@@ -275,7 +275,7 @@ static BOOL isPlaying = false;
     if (![[NSFileManager defaultManager] fileExistsAtPath:outputLog])
         [@"" writeToFile:outputLog atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-    NSString *commandToRun = [NSString stringWithFormat:@"%@ -u \"%@\" 2>&1 | /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh >> %@", jbroot(@"/usr/bin/python3"), filePath, outputLog];
+    NSString *commandToRun = [NSString stringWithFormat:@"%@ -u \"%@\" 2>&1 | /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh \"%@\"", jbroot(@"/usr/bin/python3"), filePath, filePath];
     NSLog(@"com.zjx.springboard: command to run for running py file %@", commandToRun);
 
     system2([commandToRun UTF8String], NULL, NULL);

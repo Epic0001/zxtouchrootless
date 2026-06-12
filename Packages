@@ -1,0 +1,30 @@
+Package: com.zjx.ioscontrol
+Name: ZXTouch
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: iOS 15-16 rootless touch simulation (Dopamine)
+Maintainer: Epic0001
+Author: Epic0001
+Section: Utilities
+Tag: role::developer
+Depends: mobilesubstrate | ellekit, firmware(>=15.0)
+Filename: https://github.com/Epic0001/zxtouchrootless/releases/download/v0.08/com.zjx.ioscontrol_0.1.0_rootless.deb
+Homepage: https://epic0001.github.io/zxtouchrootless
+Depiction: https://epic0001.github.io/zxtouchrootless
+SileoDepiction: https://epic0001.github.io/zxtouchrootless/depiction.json
+
+Package: com.zjx.ioscontrol
+Name: ZXTouch (Roothide)
+Version: 0.1.0
+Architecture: iphoneos-arm64e
+Description: iOS 15-16 roothide touch simulation (Serotonin)
+Maintainer: Epic0001
+Author: Epic0001
+Section: Utilities
+Tag: role::developer
+Depends: mobilesubstrate | ellekit, firmware(>=15.0)
+Filename: https://github.com/Epic0001/zxtouchrootless/releases/download/v0.08/com.zjx.ioscontrol_0.1.0_roothide.deb
+Homepage: https://epic0001.github.io/zxtouchrootless
+Depiction: https://epic0001.github.io/zxtouchrootless
+SileoDepiction: https://epic0001.github.io/zxtouchrootless/depiction.json
+

@@ -1,0 +1,44 @@
+{
+  "minVersion": "0.1",
+  "headerImage": "https://epic0001.github.io/zxtouchrootless/header.png",
+  "tintColor": "#58a6ff",
+  "tabs": [
+    {
+      "tabname": "Details",
+      "views": [
+        {
+          "viewClass": "DepictionMarkdownView",
+          "markdown": "## ZXTouch Rootless\n\nSystem-wide touch simulation for **iOS 15–16**. Supports Dopamine (rootless) and Roothide/Serotonin.\n\n### Features\n- Touch simulation (up to 19 fingers)\n- Python script automation\n- Image matching (no OpenCV)\n- OCR via Vision framework\n- Color picker & searcher\n- Text input & keyboard control\n- iOS Shortcuts integration\n- Dark mode\n\n### Requirements\n- iOS 15.0 – 16.6.1\n- Dopamine or Roothide jailbreak\n- Python 3 from Procursus (for scripts)"
+        },
+        {
+          "viewClass": "DepictionSeparatorView"
+        },
+        {
+          "viewClass": "DepictionHeaderView",
+          "title": "Links"
+        },
+        {
+          "viewClass": "DepictionTableButtonView",
+          "title": "GitHub Repository",
+          "action": "https://github.com/Epic0001/zxtouchrootless",
+          "openExternal": true
+        },
+        {
+          "viewClass": "DepictionTableButtonView",
+          "title": "Documentation",
+          "action": "https://epic0001.github.io/zxtouchrootless",
+          "openExternal": true
+        }
+      ]
+    },
+    {
+      "tabname": "Changelog",
+      "views": [
+        {
+          "viewClass": "DepictionMarkdownView",
+          "markdown": "## v0.08\n- Full roothide (Serotonin) support\n- image_match working via Accelerate.framework\n- iOS Shortcuts integration fixed\n- insert_text / keyboard control working\n- Python 3.9+ auto-detection & setup\n- Restored log format with timestamps\n- Touch indicator orientation fix"
+        }
+      ]
+    }
+  ]
+}

@@ -162,7 +162,7 @@ device = zxtouch("127.0.0.1")  # use device IP for remote control
 | `start_touch_recording` / `stop_touch_recording` | ✅ Working |
 | `ocr` / `get_supported_ocr_languages` | ✅ Working |
 | `image_match` | ✅ Working (Accelerate.framework, no OpenCV) |
-| `insert_text` / `show_keyboard` / `hide_keyboard` / `move_cursor` | ❌ Requires process injection |
+| `insert_text` / `show_keyboard` / `hide_keyboard` / `move_cursor` | ✅ Working (via appdelegate tweak) |
 
 ---
 

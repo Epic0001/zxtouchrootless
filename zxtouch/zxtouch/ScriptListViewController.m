@@ -150,11 +150,67 @@
     refreshControl = [[UIRefreshControl alloc]init];
     [refreshControl addTarget:self action:@selector(refreshTable) forControlEvents:UIControlEventValueChanged];
     self._scriptListTableView.refreshControl = refreshControl;
+    [self updateReadmeHeader];
     
     if (![currentFolder isEqualToString:SCRIPTS_PATH])
     {
         self.navigationItem.leftBarButtonItems = nil;
     }
+}
+
+- (void)updateReadmeHeader {
+    NSString *readmePath = [currentFolder stringByAppendingPathComponent:@"README.md"];
+    if (!currentFolder || ![[NSFileManager defaultManager] fileExistsAtPath:readmePath]) {
+        self._scriptListTableView.tableHeaderView = nil;
+        return;
+    }
+
+    NSString *readme = [NSString stringWithContentsOfFile:readmePath encoding:NSUTF8StringEncoding error:nil];
+    if (readme.length == 0) {
+        self._scriptListTableView.tableHeaderView = nil;
+        return;
+    }
+
+    UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self._scriptListTableView.bounds.size.width, 1)];
+    header.backgroundColor = UIColor.systemGroupedBackgroundColor;
+
+    UILabel *title = [[UILabel alloc] init];
+    title.translatesAutoresizingMaskIntoConstraints = NO;
+    title.text = @"README";
+    title.font = [UIFont boldSystemFontOfSize:15];
+    title.textColor = UIColor.secondaryLabelColor;
+
+    UITextView *preview = [[UITextView alloc] init];
+    preview.translatesAutoresizingMaskIntoConstraints = NO;
+    preview.text = readme;
+    preview.editable = NO;
+    preview.scrollEnabled = NO;
+    preview.font = [UIFont systemFontOfSize:14];
+    preview.textColor = UIColor.labelColor;
+    preview.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
+    preview.layer.cornerRadius = 8;
+    preview.textContainerInset = UIEdgeInsetsMake(10, 10, 10, 10);
+
+    [header addSubview:title];
+    [header addSubview:preview];
+
+    CGFloat width = self._scriptListTableView.bounds.size.width;
+    CGFloat previewWidth = MAX(width - 32, 100);
+    CGSize previewSize = [preview sizeThatFits:CGSizeMake(previewWidth, CGFLOAT_MAX)];
+    CGFloat previewHeight = MIN(MAX(previewSize.height, 72), 240);
+    header.frame = CGRectMake(0, 0, width, previewHeight + 50);
+
+    [NSLayoutConstraint activateConstraints:@[
+        [title.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:16],
+        [title.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-16],
+        [title.topAnchor constraintEqualToAnchor:header.topAnchor constant:12],
+        [preview.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:16],
+        [preview.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-16],
+        [preview.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:6],
+        [preview.heightAnchor constraintEqualToConstant:previewHeight]
+    ]];
+
+    self._scriptListTableView.tableHeaderView = header;
 }
 
 
@@ -176,6 +232,7 @@
 
 - (void)refreshTable {
     scriptList = [self updateScriptList];
+    [self updateReadmeHeader];
     [__scriptListTableView reloadData];
     
     [refreshControl endRefreshing];

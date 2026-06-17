@@ -5,5 +5,6 @@
 
 void showAlertBox(NSString* title, NSString* content, int dismissTime);
 void showAlertBoxFromRawData(UInt8 *eventData, NSError **error);
+NSString *promptInputFromRawData(UInt8 *eventData, NSError **error);
 
 #endif

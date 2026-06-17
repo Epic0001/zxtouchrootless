@@ -16,14 +16,36 @@ fi
 
 # Create required app directories
 mkdir -p /var/mobile/Library/ZXTouch/scripts/recording/
+mkdir -p /var/mobile/Library/ZXTouch/scripts/examples/
 mkdir -p /var/mobile/Library/ZXTouch/config/tweak/
 mkdir -p /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/
 
 # Copy example scripts (only if not already there)
 EXAMPLES=/var/jb/usr/share/zxtouch/examples
 if [ -d "$EXAMPLES" ]; then
-    cp -rn "$EXAMPLES/"* /var/mobile/Library/ZXTouch/scripts/ 2>/dev/null || true
+    cp -rn "$EXAMPLES/"* /var/mobile/Library/ZXTouch/scripts/examples/ 2>/dev/null || true
 fi
+
+REGISTRY=/var/mobile/Library/ZXTouch/scripts/registry.plist
+if [ -f /var/jb/usr/share/zxtouch/script-registry.plist ]; then
+    cp -f /var/jb/usr/share/zxtouch/script-registry.plist "$REGISTRY"
+fi
+
+ADD_DATETIME=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh
+if [ ! -f "$ADD_DATETIME" ]; then
+    cat > "$ADD_DATETIME" << 'EOF'
+#!/var/jb/bin/sh
+OUTPUT=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output
+DATE=/var/jb/usr/bin/date
+if [ ! -x "$DATE" ]; then DATE=/usr/bin/date; fi
+echo "$($DATE '+%m-%d-%Y %T'): Start running script. Script path: $1" >> "$OUTPUT"
+while IFS= read -r line; do
+    echo "$($DATE '+%m-%d-%Y %T'): $line" >> "$OUTPUT"
+done
+EOF
+fi
+chmod 755 "$ADD_DATETIME"
+touch /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output
 
 chown -R mobile:mobile /var/mobile/Library/ZXTouch
 

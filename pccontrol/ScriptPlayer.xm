@@ -275,7 +275,11 @@ static BOOL isPlaying = false;
     if (![[NSFileManager defaultManager] fileExistsAtPath:outputLog])
         [@"" writeToFile:outputLog atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
-    NSString *commandToRun = [NSString stringWithFormat:@"%@ -u \"%@\" 2>&1 | /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh \"%@\"", jbroot(@"/usr/bin/python3"), filePath, filePath];
+    NSString *dateWrapper = @"/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh";
+    if (![[NSFileManager defaultManager] fileExistsAtPath:dateWrapper])
+        [@"#!/var/jb/bin/sh\nOUTPUT=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output\nDATE=/var/jb/usr/bin/date\nif [ ! -x \"$DATE\" ]; then DATE=/usr/bin/date; fi\necho \"$($DATE '+%m-%d-%Y %T'): Start running script. Script path: $1\" >> \"$OUTPUT\"\nwhile IFS= read -r line; do\n    echo \"$($DATE '+%m-%d-%Y %T'): $line\" >> \"$OUTPUT\"\ndone\n" writeToFile:dateWrapper atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+    NSString *commandToRun = [NSString stringWithFormat:@"%@ -u \"%@\" 2>&1 | %@ \"%@\" \"%@\"", jbroot(@"/usr/bin/python3"), filePath, jbroot(@"/bin/sh"), dateWrapper, filePath];
     NSLog(@"com.zjx.springboard: command to run for running py file %@", commandToRun);
 
     system2([commandToRun UTF8String], NULL, NULL);

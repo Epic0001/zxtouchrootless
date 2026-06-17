@@ -43,6 +43,64 @@ static CGFloat scale = 0;
 
 static TouchIndicatorWindow *touchIndicatorWindow;
 
+static BOOL frontMostAppSupportsOnlyPortrait(void)
+{
+    __block BOOL portraitOnly = NO;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        @try {
+            SpringBoard *springboard = (SpringBoard*)[%c(SpringBoard) sharedApplication];
+            SBApplication *frontApp = nil;
+            if ([springboard respondsToSelector:@selector(_accessibilityFrontMostApplication)]) {
+                frontApp = [springboard _accessibilityFrontMostApplication];
+            }
+            NSString *bundleIdentifier = nil;
+            if ([frontApp respondsToSelector:@selector(bundleIdentifier)]) {
+                bundleIdentifier = frontApp.bundleIdentifier;
+            } else if ([frontApp respondsToSelector:@selector(displayIdentifier)]) {
+                bundleIdentifier = frontApp.displayIdentifier;
+            }
+            if (!bundleIdentifier || [bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
+                return;
+            }
+
+            NSDictionary *info = nil;
+            Class proxyClass = NSClassFromString(@"LSApplicationProxy");
+            SEL proxySelector = NSSelectorFromString(@"applicationProxyForIdentifier:");
+            if (proxyClass && [proxyClass respondsToSelector:proxySelector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                id proxy = [proxyClass performSelector:proxySelector withObject:bundleIdentifier];
+                NSURL *bundleURL = nil;
+                if ([proxy respondsToSelector:@selector(bundleURL)]) {
+                    bundleURL = [proxy performSelector:@selector(bundleURL)];
+                }
+#pragma clang diagnostic pop
+                if (bundleURL) {
+                    info = [NSDictionary dictionaryWithContentsOfURL:[bundleURL URLByAppendingPathComponent:@"Info.plist"]];
+                }
+            }
+
+            NSArray *orientations = info[@"UISupportedInterfaceOrientations"];
+            NSArray *ipadOrientations = info[@"UISupportedInterfaceOrientations~ipad"];
+            if (ipadOrientations.count > 0) orientations = ipadOrientations;
+            if (orientations.count == 0) return;
+
+            BOOL hasLandscape = NO;
+            for (NSString *orientation in orientations) {
+                if ([orientation containsString:@"Landscape"]) {
+                    hasLandscape = YES;
+                    break;
+                }
+            }
+            portraitOnly = !hasLandscape;
+        }
+        @catch (NSException *exception) {
+            portraitOnly = NO;
+        }
+    });
+    return portraitOnly;
+}
+
 void report_memory(void) {
   struct task_basic_info info;
   mach_msg_type_number_t size = TASK_BASIC_INFO_COUNT;
@@ -270,7 +328,11 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
             {
                 int o = [Screen getScreenOrientation];
                 if (o >= UIInterfaceOrientationPortrait && o <= UIInterfaceOrientationLandscapeRight)
+                {
+                    if ((o == UIInterfaceOrientationLandscapeLeft || o == UIInterfaceOrientationLandscapeRight) && frontMostAppSupportsOnlyPortrait())
+                        o = UIInterfaceOrientationPortrait;
                     cachedOrientation = (UIInterfaceOrientation)o;
+                }
             }
             UIInterfaceOrientation ori = cachedOrientation;
 

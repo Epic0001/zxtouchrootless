@@ -1,6 +1,8 @@
 #!/var/jb/bin/sh
 OUTPUT=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output
-echo "$(/var/jb/usr/bin/date '+%m-%d-%Y %T'): Start running script. Script path: $1" >> "$OUTPUT"
+DATE=/var/jb/usr/bin/date
+if [ ! -x "$DATE" ]; then DATE=/usr/bin/date; fi
+echo "$($DATE '+%m-%d-%Y %T'): Start running script. Script path: $1" >> "$OUTPUT"
 while IFS= read -r line; do
-    echo "$(/var/jb/usr/bin/date '+%m-%d-%Y %T'): $line" >> "$OUTPUT"
+    echo "$($DATE '+%m-%d-%Y %T'): $line" >> "$OUTPUT"
 done

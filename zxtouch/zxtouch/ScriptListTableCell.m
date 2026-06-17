@@ -14,6 +14,17 @@
     NSString* filePath;
 }
 
+- (UIImage *)symbolNamed:(NSString *)symbolName fallback:(NSString *)fallbackName {
+    UIImage *image = nil;
+    if (@available(iOS 13.0, *)) {
+        image = [UIImage systemImageNamed:symbolName];
+    }
+    if (!image) {
+        image = [UIImage imageNamed:fallbackName];
+    }
+    return image;
+}
+
 - (void)awakeFromNib {
     [super awakeFromNib];
     // Initialization code
@@ -59,8 +70,20 @@
 
     if ([[path pathExtension] isEqualToString:@"bdl"]) // is script. can play
     {
-        // Now the image will have been loaded and decoded and is ready to rock for the main thread
-        [[self imageView] setImage:[UIImage imageNamed:@"script-icon"]];
+        NSString *entry = [NSDictionary dictionaryWithContentsOfFile:[path stringByAppendingPathComponent:@"info.plist"]][@"Entry"];
+        NSString *entryExtension = [[entry pathExtension] lowercaseString];
+        UIImage *icon = nil;
+        if ([entryExtension isEqualToString:@"raw"]) {
+            icon = [self symbolNamed:@"waveform.path.ecg" fallback:@"script-icon"];
+        } else if ([entryExtension isEqualToString:@"py"]) {
+            icon = [self symbolNamed:@"chevron.left.forwardslash.chevron.right" fallback:@"script-icon"];
+        } else {
+            icon = [UIImage imageNamed:@"script-icon"];
+        }
+        [[self imageView] setImage:icon];
+        if (@available(iOS 13.0, *)) {
+            [self imageView].tintColor = [UIColor systemBlueColor];
+        }
         
         return;
     }
@@ -70,7 +93,16 @@
 
     if (!isDir)
     {
-        [[self imageView] setImage:[UIImage imageNamed:@"normal-file-icon"]];
+        NSString *extension = [[path pathExtension] lowercaseString];
+        if ([extension isEqualToString:@"py"]) {
+            [[self imageView] setImage:[self symbolNamed:@"chevron.left.forwardslash.chevron.right" fallback:@"normal-file-icon"]];
+        } else if ([extension isEqualToString:@"raw"]) {
+            [[self imageView] setImage:[self symbolNamed:@"waveform.path.ecg" fallback:@"normal-file-icon"]];
+        } else if ([extension isEqualToString:@"md"] || [extension isEqualToString:@"markdown"]) {
+            [[self imageView] setImage:[self symbolNamed:@"doc.richtext" fallback:@"normal-file-icon"]];
+        } else {
+            [[self imageView] setImage:[UIImage imageNamed:@"normal-file-icon"]];
+        }
     }
     else
     {

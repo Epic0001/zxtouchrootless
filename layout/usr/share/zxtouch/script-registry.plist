@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>version</key>
+    <string>1</string>
+    <key>examplesPath</key>
+    <string>/var/mobile/Library/ZXTouch/scripts/examples</string>
+    <key>scripts</key>
+    <array>
+        <dict><key>name</key><string>Toast</string><key>type</key><string>python</string><key>path</key><string>examples/Toast.bdl</string><key>entry</key><string>toast.py</string></dict>
+        <dict><key>name</key><string>Touch Simulation</string><key>type</key><string>python</string><key>path</key><string>examples/Touch Simulation.bdl</string><key>entry</key><string>simulate_touch.py</string></dict>
+        <dict><key>name</key><string>Touch Simulation From Raw Data</string><key>type</key><string>raw</string><key>path</key><string>examples/Touch Simulation From Raw Data.bdl</string><key>entry</key><string>210102110339.raw</string></dict>
+        <dict><key>name</key><string>Image Matching</string><key>type</key><string>python</string><key>path</key><string>examples/Image Matching.bdl</string><key>entry</key><string>im.py</string></dict>
+        <dict><key>name</key><string>Text Input and MORE</string><key>type</key><string>python</string><key>path</key><string>examples/Text Input and MORE.bdl</string><key>entry</key><string>keyboard-test.py</string></dict>
+        <dict><key>name</key><string>Color Picker</string><key>type</key><string>python</string><key>path</key><string>examples/Color Picker.bdl</string><key>entry</key><string>color_picker.py</string></dict>
+        <dict><key>name</key><string>Find Color</string><key>type</key><string>python</string><key>path</key><string>examples/Find Color.bdl</string><key>entry</key><string>color_searcher.py</string></dict>
+        <dict><key>name</key><string>Device Info</string><key>type</key><string>python</string><key>path</key><string>examples/Device Info.bdl</string><key>entry</key><string>device_info.py</string></dict>
+        <dict><key>name</key><string>Alert Box</string><key>type</key><string>python</string><key>path</key><string>examples/Alert Box.bdl</string><key>entry</key><string>alertbox.py</string></dict>
+    </array>
+</dict>
+</plist>

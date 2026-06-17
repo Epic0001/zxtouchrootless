@@ -14,19 +14,30 @@
 
 @implementation LogViewController
 {
-    
+    NSTimer *refreshTimer;
+    NSString *lastContent;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self refrshTextView];
+    refreshTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(refrshTextView) userInfo:nil repeats:YES];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [refreshTimer invalidate];
+    refreshTimer = nil;
 }
 
 - (void)refrshTextView
 {
     if (![[NSFileManager defaultManager] fileExistsAtPath:RUNTIME_OUTPUT_PATH])
     {
-        _textView.text = @"";
+        if (![lastContent isEqualToString:@""]) {
+            _textView.text = @"";
+            lastContent = @"";
+        }
         return;
     }
     
@@ -47,7 +58,15 @@
         [alert addAction:defaultAction];
         [self presentViewController:alert animated:YES completion:nil];
     }
-    _textView.text = content;
+    if (![content isEqualToString:lastContent])
+    {
+        _textView.text = content;
+        lastContent = content;
+        if (content.length > 0) {
+            NSRange bottom = NSMakeRange(content.length - 1, 1);
+            [_textView scrollRangeToVisible:bottom];
+        }
+    }
 }
 /*
 #pragma mark - Navigation

@@ -285,6 +285,22 @@ void processTask(UInt8 *buff, CFWriteStreamRef writeStreamRef)
             }
         }
     }
+    else if (taskType == TASK_PROMPT_INPUT)
+    {
+        @autoreleasepool {
+            NSError *err = nil;
+            NSString *result = promptInputFromRawData(eventData, &err);
+            if (err)
+            {
+                notifyClient((UInt8*)[[err localizedDescription] UTF8String], writeStreamRef);
+            }
+            else
+            {
+                result = [[result stringByReplacingOccurrencesOfString:@"\r" withString:@" "] stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
+                notifyClient((UInt8*)[[NSString stringWithFormat:@"0;;%@\r\n", result] UTF8String], writeStreamRef);
+            }
+        }
+    }
     else if (taskType == TASK_UPDATE_CACHE)
     {
         @autoreleasepool{

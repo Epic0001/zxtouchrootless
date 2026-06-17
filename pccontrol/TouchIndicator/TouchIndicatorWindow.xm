@@ -43,6 +43,14 @@ static CGFloat scale = 0;
 
 static TouchIndicatorWindow *touchIndicatorWindow;
 
+static CGSize stableCanvasSizeForOrientation(UIInterfaceOrientation orientation)
+{
+    if (UIInterfaceOrientationIsLandscape(orientation)) {
+        return CGSizeMake(screenBoundsHeight, screenBoundsWidth);
+    }
+    return CGSizeMake(screenBoundsWidth, screenBoundsHeight);
+}
+
 static BOOL frontMostAppSupportsOnlyPortrait(void)
 {
     __block BOOL portraitOnly = NO;
@@ -313,8 +321,6 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 
             // IOHIDEvent coords are in PORTRAIT physical space (not orientation-aware).
             // Apply orientation-specific transform to get UIKit landscape points.
-            CGRect b = [UIScreen mainScreen].bounds;
-            CGFloat W = b.size.width, H = b.size.height;
             CGFloat xOnScreen, yOnScreen;
 
             // Orientation source: SpringBoard's own scene (sc.interfaceOrientation)
@@ -335,6 +341,8 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
                 }
             }
             UIInterfaceOrientation ori = cachedOrientation;
+            CGSize canvasSize = stableCanvasSizeForOrientation(ori);
+            CGFloat W = canvasSize.width, H = canvasSize.height;
 
             switch (ori) {
                 case UIInterfaceOrientationLandscapeLeft:
@@ -380,6 +388,12 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
     UIColor* indicatorColor;
 }
 
+- (void)updateWindowFrameForOrientation:(UIInterfaceOrientation)orientation {
+    CGSize canvasSize = stableCanvasSizeForOrientation(orientation);
+    _window.frame = CGRectMake(0, 0, canvasSize.width, canvasSize.height);
+    _window.rootViewController.view.frame = _window.bounds;
+}
+
 - (id)init {
     self = [super init];
     if (self)
@@ -388,7 +402,6 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
             UIWindowScene *scene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
             if (scene) {
                 _window = [[UIWindow alloc] initWithWindowScene:scene];
-                _window.frame = CGRectMake(0, 0, screenBoundsWidth, screenBoundsHeight);
             } else {
                 _window = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, screenBoundsWidth, screenBoundsHeight)];
             }
@@ -397,6 +410,7 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
             [_window setBackgroundColor:[UIColor clearColor]];
             [_window setUserInteractionEnabled:NO];
             [_window setAutoresizingMask:18];
+            [self updateWindowFrameForOrientation:cachedOrientation];
 
             indicatorColor = [UIColor colorWithRed:255 green:0 blue:0 alpha:0.5];
             //init indicator view list
@@ -439,6 +453,7 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
         [self hideIndicator:index];
     }
     dispatch_async(dispatch_get_main_queue(), ^{
+        [self updateWindowFrameForOrientation:cachedOrientation];
         CGFloat indicatorSize = radius*SIZE_INDIACTOR_TOUCH_RADIUS_RATIO;
         // init a indicator
         CGFloat halfSize = indicatorSize/2;
@@ -478,8 +493,8 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 
 - (void) show {
     dispatch_async(dispatch_get_main_queue(), ^{
-        _window.frame = [UIScreen mainScreen].bounds;
-        _window.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [self updateWindowFrameForOrientation:cachedOrientation];
+        _window.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
         _window.hidden = NO;
     });
 }
@@ -504,6 +519,7 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
     dispatch_async(dispatch_get_main_queue(), ^{
         if (touchIndicatorViewList[index-1] == NULL)
             return;
+        [self updateWindowFrameForOrientation:cachedOrientation];
 
         // update width and height and cornerRadius
         CGFloat indicatorSize = radius*SIZE_INDIACTOR_TOUCH_RADIUS_RATIO;

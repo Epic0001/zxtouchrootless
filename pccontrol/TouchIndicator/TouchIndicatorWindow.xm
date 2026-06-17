@@ -43,6 +43,22 @@ static CGFloat scale = 0;
 
 static TouchIndicatorWindow *touchIndicatorWindow;
 static BOOL logNextIndicatorOrientation = NO;
+static BOOL logNextWindowGeometry = NO;
+
+static void appendTouchIndicatorDebugLog(NSString *message)
+{
+    NSString *logPath = @"/var/mobile/Library/ZXTouch/logs/orientation-debug.log";
+    NSFileManager *fm = [NSFileManager defaultManager];
+    [fm createDirectoryAtPath:[logPath stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil];
+    if (![fm fileExistsAtPath:logPath]) {
+        [message writeToFile:logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } else {
+        NSFileHandle *handle = [NSFileHandle fileHandleForWritingAtPath:logPath];
+        [handle seekToEndOfFile];
+        [handle writeData:[message dataUsingEncoding:NSUTF8StringEncoding]];
+        [handle closeFile];
+    }
+}
 
 static CGSize stableCanvasSizeForOrientation(UIInterfaceOrientation orientation)
 {
@@ -152,37 +168,12 @@ static UIInterfaceOrientation currentIndicatorOrientation(void)
         NSString *message = [NSString stringWithFormat:@"bundle=%@ supportsLandscape=%d frontOrientation=%d selectedOrientation=%ld\n",
                              bundleIdentifier ?: @"unknown", supportsLandscape, frontOrientation, (long)selectedOrientation];
         NSLog(@"com.zjx.springboard.touchindicator: %@", message);
-        NSString *logPath = @"/var/mobile/Library/ZXTouch/logs/orientation-debug.log";
-        NSFileManager *fm = [NSFileManager defaultManager];
-        [fm createDirectoryAtPath:[logPath stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil];
-        if (![fm fileExistsAtPath:logPath]) {
-            [message writeToFile:logPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
-        } else {
-            NSFileHandle *handle = [NSFileHandle fileHandleForWritingAtPath:logPath];
-            [handle seekToEndOfFile];
-            [handle writeData:[message dataUsingEncoding:NSUTF8StringEncoding]];
-            [handle closeFile];
-        }
+        appendTouchIndicatorDebugLog(message);
         logNextIndicatorOrientation = NO;
     }
 
     return selectedOrientation;
 }
-
-@interface TouchIndicatorRootViewController : UIViewController
-@end
-
-@implementation TouchIndicatorRootViewController
-- (BOOL)shouldAutorotate
-{
-    return NO;
-}
-
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations
-{
-    return UIInterfaceOrientationMaskAll;
-}
-@end
 
 void report_memory(void) {
   struct task_basic_info info;
@@ -408,6 +399,7 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
             if (touch == 1 && (eventMask & 2))
             {
                 logNextIndicatorOrientation = YES;
+                logNextWindowGeometry = YES;
                 cachedOrientation = currentIndicatorOrientation();
             }
             UIInterfaceOrientation ori = cachedOrientation;
@@ -469,9 +461,14 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
     if (self)
     {
         dispatch_async(dispatch_get_main_queue(), ^{
-            _window = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, screenBoundsWidth, screenBoundsHeight)];
+            UIWindowScene *scene = (UIWindowScene *)[[UIApplication sharedApplication].connectedScenes anyObject];
+            if (scene) {
+                _window = [[UIWindow alloc] initWithWindowScene:scene];
+            } else {
+                _window = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, screenBoundsWidth, screenBoundsHeight)];
+            }
             _window.windowLevel = UIWindowLevelAlert + 2;
-            _window.rootViewController = [[TouchIndicatorRootViewController alloc] init];
+            _window.rootViewController = [[UIViewController alloc] init];
             [_window setBackgroundColor:[UIColor clearColor]];
             [_window setUserInteractionEnabled:NO];
             [_window setAutoresizingMask:18];
@@ -519,6 +516,14 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
     }
     dispatch_async(dispatch_get_main_queue(), ^{
         [self updateWindowFrameForOrientation:cachedOrientation];
+        if (logNextWindowGeometry) {
+            CGAffineTransform t = _window.transform;
+            NSString *message = [NSString stringWithFormat:@"window frame=%@ bounds=%@ transform=[%.3f %.3f %.3f %.3f %.3f %.3f]\n",
+                                 NSStringFromCGRect(_window.frame), NSStringFromCGRect(_window.bounds),
+                                 t.a, t.b, t.c, t.d, t.tx, t.ty];
+            appendTouchIndicatorDebugLog(message);
+            logNextWindowGeometry = NO;
+        }
         CGFloat indicatorSize = radius*SIZE_INDIACTOR_TOUCH_RADIUS_RATIO;
         // init a indicator
         CGFloat halfSize = indicatorSize/2;

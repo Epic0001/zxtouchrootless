@@ -36,7 +36,7 @@
       "views": [
         {
           "viewClass": "DepictionMarkdownView",
-          "markdown": "## v0.08\n- Full roothide (Serotonin) support\n- image_match working via Accelerate.framework\n- iOS Shortcuts integration fixed\n- insert_text / keyboard control working\n- Python 3.9+ auto-detection & setup\n- Restored log format with timestamps\n- Touch indicator orientation fix"
+          "markdown": "## v0.08.1\n- Improved script list UI and settings\n- Added separate Python/raw script indicators\n- Moved bundled examples into a dedicated examples folder\n- Added script registry metadata\n- Added lightweight syntax highlighting in the editor\n- Added script input prompts through `device.prompt_input(...)`\n- Shows README files inside script folders\n- Hardened script log helper creation\n- Improved touch indicator behavior in portrait-locked apps\n\n## v0.08\n- Full roothide (Serotonin) support\n- image_match working via Accelerate.framework\n- iOS Shortcuts integration fixed\n- insert_text / keyboard control working\n- Python 3.9+ auto-detection & setup\n- Restored log format with timestamps\n- Touch indicator orientation fix"
         }
       ]
     }

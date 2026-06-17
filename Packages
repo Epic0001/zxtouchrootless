@@ -7,8 +7,8 @@ Maintainer: Epic0001
 Author: Epic0001
 Section: Utilities
 Tag: role::developer
-Depends: mobilesubstrate | ellekit, firmware(>=15.0)
-Filename: https://github.com/Epic0001/zxtouchrootless/releases/download/v0.08/com.zjx.ioscontrol_0.1.0_rootless.deb
+Depends: mobilesubstrate | ellekit, firmware (>= 15.0)
+Filename: https://github.com/Epic0001/zxtouchrootless/releases/download/v0.08.1/com.zjx.ioscontrol_0.1.0_rootless.deb
 Homepage: https://epic0001.github.io/zxtouchrootless
 Depiction: https://epic0001.github.io/zxtouchrootless
 SileoDepiction: https://epic0001.github.io/zxtouchrootless/depiction.json
@@ -22,9 +22,8 @@ Maintainer: Epic0001
 Author: Epic0001
 Section: Utilities
 Tag: role::developer
-Depends: mobilesubstrate | ellekit, firmware(>=15.0)
-Filename: https://github.com/Epic0001/zxtouchrootless/releases/download/v0.08/com.zjx.ioscontrol_0.1.0_roothide.deb
+Depends: mobilesubstrate | ellekit, firmware (>= 15.0)
+Filename: https://github.com/Epic0001/zxtouchrootless/releases/download/v0.08.1/com.zjx.ioscontrol_0.1.0_roothide.deb
 Homepage: https://epic0001.github.io/zxtouchrootless
 Depiction: https://epic0001.github.io/zxtouchrootless
 SileoDepiction: https://epic0001.github.io/zxtouchrootless/depiction.json
-

@@ -10,7 +10,7 @@
 
 #define SCRIPTS_PATH @"/var/mobile/Library/ZXTouch/scripts/"
 #define EXAMPLE_SCRIPTS_PATH @"/var/mobile/Library/ZXTouch/scripts/examples/"
-#define SCRIPT_REGISTRY_PATH @"/var/mobile/Library/ZXTouch/scripts/registry.plist"
+#define SCRIPT_REGISTRY_PATH @"/var/mobile/Library/ZXTouch/config/tweak/script_registry.plist"
 #define RUNTIME_OUTPUT_PATH @"/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output"
 
 #define SPRINGBOARD_CONFIG_PATH @"/var/mobile/Library/ZXTouch/config/tweak/config.plist"

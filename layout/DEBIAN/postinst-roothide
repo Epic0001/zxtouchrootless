@@ -27,7 +27,7 @@ if [ -d "$EXAMPLES" ]; then
     cp -rn "$EXAMPLES/"* /var/mobile/Library/ZXTouch/scripts/examples/ 2>/dev/null || true
 fi
 
-REGISTRY=/var/mobile/Library/ZXTouch/scripts/registry.plist
+REGISTRY=/var/mobile/Library/ZXTouch/config/tweak/script_registry.plist
 REGISTRY_SOURCE=$(jbroot /usr/share/zxtouch/script-registry.plist)
 if [ -f "$REGISTRY_SOURCE" ]; then
     cp -f "$REGISTRY_SOURCE" "$REGISTRY"

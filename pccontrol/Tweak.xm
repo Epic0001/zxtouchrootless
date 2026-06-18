@@ -107,6 +107,10 @@ PopupWindow *popupWindow;
 #define ZX_ACTION_TOGGLE_RECORDING @"toggle_recording"
 #define ZX_ACTION_RUN_SCRIPT @"run_script"
 
+#define ZX_TRIGGER_VOLUME_UP @"volume_up"
+#define ZX_TRIGGER_VOLUME_DOWN @"volume_down"
+#define ZX_TRIGGER_HOME @"home"
+
 
 void stopCrazyTap()
 {
@@ -151,7 +155,7 @@ void repoNameIsIOS13SimulateTouch()
 /*
 Get the sender id and unregister itself.
 */
-static CFTimeInterval startTime = 0;
+static NSMutableDictionary *triggerClickState = nil;
 static void showOrHidePopup()
 {
     if (![popupWindow isShown])
@@ -227,24 +231,80 @@ static void runConfiguredTriggerAction(NSString *action, NSString *scriptPath)
     showOrHidePopup();
 }
 
+static NSString *triggerKeyForKeyboardUsage(long usage)
+{
+    if (usage == 233) return ZX_TRIGGER_VOLUME_UP;
+    if (usage == 234) return ZX_TRIGGER_VOLUME_DOWN;
+    if (usage == 64 || usage == 74) return ZX_TRIGGER_HOME;
+    return nil;
+}
+
+static NSDictionary *configForTrigger(NSDictionary *config, NSString *triggerKey)
+{
+    NSDictionary *triggers = config[@"trigger_configs"];
+    NSDictionary *trigger = [triggers isKindOfClass:[NSDictionary class]] ? triggers[triggerKey] : nil;
+    if ([trigger isKindOfClass:[NSDictionary class]]) return trigger;
+
+    if ([triggerKey isEqualToString:ZX_TRIGGER_VOLUME_DOWN]) {
+        BOOL enabled = config[@"double_click_volume_show_popup"] ? [config[@"double_click_volume_show_popup"] boolValue] : YES;
+        NSString *action = config[@"double_click_volume_action"] ?: ZX_ACTION_SMART_TOGGLE;
+        NSString *script = config[@"double_click_volume_script"] ?: @"";
+        return @{
+            @"enabled": @(enabled),
+            @"count": @(2),
+            @"action": action,
+            @"script": script
+        };
+    }
+    return @{@"enabled": @(NO), @"count": @(2), @"action": ZX_ACTION_SMART_TOGGLE, @"script": @""};
+}
+
+static void handleConfiguredTriggerClick(NSString *triggerKey)
+{
+    if (!triggerClickState) triggerClickState = [NSMutableDictionary dictionary];
+    NSDictionary *config = [[NSDictionary alloc] initWithContentsOfFile:getCommonConfigFilePath()] ?: @{};
+    NSDictionary *trigger = configForTrigger(config, triggerKey);
+    if (![trigger[@"enabled"] boolValue]) return;
+
+    int requiredCount = [trigger[@"count"] intValue];
+    if (requiredCount < 1) requiredCount = 1;
+    if (requiredCount > 5) requiredCount = 5;
+
+    CFTimeInterval now = CACurrentMediaTime();
+    NSMutableDictionary *state = [triggerClickState[triggerKey] mutableCopy] ?: [NSMutableDictionary dictionary];
+    CFTimeInterval lastTime = [state[@"time"] doubleValue];
+    int count = (now - lastTime <= 0.55) ? [state[@"count"] intValue] + 1 : 1;
+    state[@"time"] = @(now);
+    state[@"count"] = @(count);
+    triggerClickState[triggerKey] = state;
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.58 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        NSMutableDictionary *currentState = triggerClickState[triggerKey];
+        if ([currentState[@"count"] intValue] != count) return;
+        if (fabs([currentState[@"time"] doubleValue] - now) > 0.01) return;
+        currentState[@"count"] = @(0);
+
+        NSDictionary *latestConfig = [[NSDictionary alloc] initWithContentsOfFile:getCommonConfigFilePath()] ?: @{};
+        NSDictionary *latestTrigger = configForTrigger(latestConfig, triggerKey);
+        int latestRequired = [latestTrigger[@"count"] intValue];
+        if (latestRequired < 1) latestRequired = 1;
+        if (latestRequired > 5) latestRequired = 5;
+        if ([latestTrigger[@"enabled"] boolValue] && count == latestRequired) {
+            runConfiguredTriggerAction(latestTrigger[@"action"], latestTrigger[@"script"]);
+        }
+    });
+}
+
 // perform some action
 static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef service, IOHIDEventRef event)
 {
-    if (!openPopUpByDoubleVolumnDown)
-        return;
     if (IOHIDEventGetType(event) == kIOHIDEventTypeKeyboard)
     {
-        if (IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage) == 234 && IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown) == 0)
+        if (IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardDown) == 0)
         {
-            CFTimeInterval currentTime = CACurrentMediaTime();
-            if (currentTime - startTime > 0.4)
-            {
-                startTime = CACurrentMediaTime();
-                return;
-            }
-
-            NSDictionary *config = [[NSDictionary alloc] initWithContentsOfFile:getCommonConfigFilePath()];
-            runConfiguredTriggerAction(config[@"double_click_volume_action"], config[@"double_click_volume_script"]);
+            long usage = IOHIDEventGetIntegerValue(event, kIOHIDEventFieldKeyboardUsage);
+            NSString *triggerKey = triggerKeyForKeyboardUsage(usage);
+            if (triggerKey) handleConfiguredTriggerClick(triggerKey);
         }
     }
 }

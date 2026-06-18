@@ -32,6 +32,10 @@
 #define ZX_ACTION_TOGGLE_RECORDING @"toggle_recording"
 #define ZX_ACTION_RUN_SCRIPT @"run_script"
 
+#define ZX_TRIGGER_VOLUME_UP @"volume_up"
+#define ZX_TRIGGER_VOLUME_DOWN @"volume_down"
+#define ZX_TRIGGER_HOME @"home"
+
 static UIImage *ZXSettingsSymbol(NSString *name) {
     if (@available(iOS 13.0, *)) {
         return [UIImage systemImageNamed:name];
@@ -58,6 +62,72 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
     if ([action isEqualToString:ZX_ACTION_TOGGLE_RECORDING]) return @"Toggle Recording";
     if ([action isEqualToString:ZX_ACTION_RUN_SCRIPT]) return @"Run Default Script";
     return @"Smart Toggle";
+}
+
+- (NSString *)triggerTitle:(NSString *)triggerKey {
+    if ([triggerKey isEqualToString:ZX_TRIGGER_VOLUME_UP]) return @"Volume Up";
+    if ([triggerKey isEqualToString:ZX_TRIGGER_HOME]) return @"Home Button";
+    return @"Volume Down";
+}
+
+- (NSMutableDictionary *)triggerConfigForKey:(NSString *)triggerKey {
+    NSMutableDictionary *allTriggers = [[configManager getValueFromKey:@"trigger_configs"] mutableCopy];
+    NSDictionary *existing = [allTriggers isKindOfClass:[NSDictionary class]] ? allTriggers[triggerKey] : nil;
+    if ([existing isKindOfClass:[NSDictionary class]]) return [existing mutableCopy];
+
+    if ([triggerKey isEqualToString:ZX_TRIGGER_VOLUME_DOWN]) {
+        BOOL enabled = YES;
+        if ([configManager getValueFromKey:@"double_click_volume_show_popup"])
+            enabled = [[configManager getValueFromKey:@"double_click_volume_show_popup"] boolValue];
+        return [@{
+            @"enabled": @(enabled),
+            @"count": @(2),
+            @"action": [configManager getValueFromKey:@"double_click_volume_action"] ?: ZX_ACTION_SMART_TOGGLE,
+            @"script": [configManager getValueFromKey:@"double_click_volume_script"] ?: @""
+        } mutableCopy];
+    }
+
+    return [@{@"enabled": @(NO), @"count": @(2), @"action": ZX_ACTION_SMART_TOGGLE, @"script": @""} mutableCopy];
+}
+
+- (void)saveTriggerConfig:(NSMutableDictionary *)trigger forKey:(NSString *)triggerKey {
+    NSMutableDictionary *allTriggers = [[configManager getValueFromKey:@"trigger_configs"] mutableCopy];
+    if (![allTriggers isKindOfClass:[NSMutableDictionary class]]) allTriggers = [NSMutableDictionary dictionary];
+    allTriggers[triggerKey] = trigger;
+    [configManager updateKey:@"trigger_configs" forValue:allTriggers];
+
+    if ([triggerKey isEqualToString:ZX_TRIGGER_VOLUME_DOWN]) {
+        [configManager updateKey:@"double_click_volume_show_popup" forValue:trigger[@"enabled"]];
+        [configManager updateKey:@"double_click_volume_action" forValue:trigger[@"action"]];
+        [configManager updateKey:@"double_click_volume_script" forValue:trigger[@"script"]];
+    }
+    [configManager save];
+    [self reloadSettingsModel];
+}
+
+- (NSString *)triggerSummaryForKey:(NSString *)triggerKey {
+    NSDictionary *trigger = [self triggerConfigForKey:triggerKey];
+    if (![trigger[@"enabled"] boolValue]) return @"Off";
+    NSString *clickWord = [trigger[@"count"] intValue] == 1 ? @"click" : @"clicks";
+    NSString *actionTitle = [self triggerActionTitle:trigger[@"action"]];
+    NSString *script = trigger[@"script"];
+    if ([trigger[@"action"] isEqualToString:ZX_ACTION_RUN_SCRIPT] && [script length] > 0) {
+        actionTitle = [NSString stringWithFormat:@"Run %@", [[script lastPathComponent] stringByDeletingPathExtension]];
+    }
+    return [NSString stringWithFormat:@"%@ %@ -> %@", trigger[@"count"], clickWord, actionTitle];
+}
+
+- (NSArray<NSString *> *)availableScriptPaths {
+    NSMutableArray *paths = [NSMutableArray array];
+    NSDirectoryEnumerator *enumerator = [[NSFileManager defaultManager] enumeratorAtPath:SCRIPTS_PATH];
+    NSString *relative = nil;
+    while ((relative = [enumerator nextObject])) {
+        if ([[relative pathExtension] isEqualToString:@"bdl"]) {
+            [paths addObject:[SCRIPTS_PATH stringByAppendingPathComponent:relative]];
+            [enumerator skipDescendants];
+        }
+    }
+    return [paths sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
 }
 
 - (NSString *)iconNameForCellTitle:(NSString *)title {
@@ -92,8 +162,6 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
     {
         switchAppBeforeRunScript = [[configManager getValueFromKey:@"switch_app_before_run_script"] boolValue];
     }
-    NSString *triggerAction = [configManager getValueFromKey:@"double_click_volume_action"] ?: ZX_ACTION_SMART_TOGGLE;
-    NSString *triggerScript = [configManager getValueFromKey:@"double_click_volume_script"] ?: @"";
 
     BOOL darkMode = [[NSUserDefaults standardUserDefaults] boolForKey:@"dark_mode"];
 
@@ -108,8 +176,9 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
             @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"doubleClickShowPopup", nil), @"switch_click_handler": NSStringFromSelector(@selector(handlePopupWindowDoubleClick:)), @"switch_init_status": @(doubleClickPopup)}
         ],
         @[
-            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Double-click Volume Down", @"secondary_title": [self triggerActionTitle:triggerAction], @"row_click_handler": NSStringFromSelector(@selector(handleVolumeActionTap:))},
-            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Default Trigger Script", @"secondary_title": triggerScript.length ? triggerScript : @"Not set", @"row_click_handler": NSStringFromSelector(@selector(handleTriggerScriptTap:))}
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Volume Up", @"secondary_title": [self triggerSummaryForKey:ZX_TRIGGER_VOLUME_UP], @"trigger_key": ZX_TRIGGER_VOLUME_UP, @"row_click_handler": NSStringFromSelector(@selector(handleTriggerTap:))},
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Volume Down", @"secondary_title": [self triggerSummaryForKey:ZX_TRIGGER_VOLUME_DOWN], @"trigger_key": ZX_TRIGGER_VOLUME_DOWN, @"row_click_handler": NSStringFromSelector(@selector(handleTriggerTap:))},
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Home Button", @"secondary_title": [self triggerSummaryForKey:ZX_TRIGGER_HOME], @"trigger_key": ZX_TRIGGER_HOME, @"row_click_handler": NSStringFromSelector(@selector(handleTriggerTap:))}
         ],
         @[
             @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"switchAppBeforePlaying", nil), @"switch_click_handler": NSStringFromSelector(@selector(handleSwitchAppBeforePlaying:)), @"switch_init_status": @(switchAppBeforeRunScript)},
@@ -145,8 +214,6 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
     if ([configManager getValueFromKey:@"switch_app_before_run_script"])
         switchAppBeforeRunScript = [[configManager getValueFromKey:@"switch_app_before_run_script"] boolValue];
     BOOL darkMode = [[NSUserDefaults standardUserDefaults] boolForKey:@"dark_mode"];
-    NSString *triggerAction = [configManager getValueFromKey:@"double_click_volume_action"] ?: ZX_ACTION_SMART_TOGGLE;
-    NSString *triggerScript = [configManager getValueFromKey:@"double_click_volume_script"] ?: @"";
 
     sections = @[NSLocalizedString(@"remoteManagement", nil), NSLocalizedString(@"control", nil), @"Automation", NSLocalizedString(@"script", nil), @"Appearance", @"About"];
     cellsForEachSection = @[
@@ -158,8 +225,9 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
             @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"doubleClickShowPopup", nil), @"switch_click_handler": NSStringFromSelector(@selector(handlePopupWindowDoubleClick:)), @"switch_init_status": @(doubleClickPopup)}
         ],
         @[
-            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Double-click Volume Down", @"secondary_title": [self triggerActionTitle:triggerAction], @"row_click_handler": NSStringFromSelector(@selector(handleVolumeActionTap:))},
-            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Default Trigger Script", @"secondary_title": triggerScript.length ? triggerScript : @"Not set", @"row_click_handler": NSStringFromSelector(@selector(handleTriggerScriptTap:))}
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Volume Up", @"secondary_title": [self triggerSummaryForKey:ZX_TRIGGER_VOLUME_UP], @"trigger_key": ZX_TRIGGER_VOLUME_UP, @"row_click_handler": NSStringFromSelector(@selector(handleTriggerTap:))},
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Volume Down", @"secondary_title": [self triggerSummaryForKey:ZX_TRIGGER_VOLUME_DOWN], @"trigger_key": ZX_TRIGGER_VOLUME_DOWN, @"row_click_handler": NSStringFromSelector(@selector(handleTriggerTap:))},
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Home Button", @"secondary_title": [self triggerSummaryForKey:ZX_TRIGGER_HOME], @"trigger_key": ZX_TRIGGER_HOME, @"row_click_handler": NSStringFromSelector(@selector(handleTriggerTap:))}
         ],
         @[
             @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"switchAppBeforePlaying", nil), @"switch_click_handler": NSStringFromSelector(@selector(handleSwitchAppBeforePlaying:)), @"switch_init_status": @(switchAppBeforeRunScript)},
@@ -219,6 +287,110 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
     [self reloadSettingsModel];
 }
 
+- (NSString *)triggerKeyFromCell:(TableViewCellWithEntry *)cell {
+    if ([cell.title.text isEqualToString:@"Volume Up"]) return ZX_TRIGGER_VOLUME_UP;
+    if ([cell.title.text isEqualToString:@"Home Button"]) return ZX_TRIGGER_HOME;
+    return ZX_TRIGGER_VOLUME_DOWN;
+}
+
+- (void)setAction:(NSString *)action forTrigger:(NSString *)triggerKey {
+    NSMutableDictionary *trigger = [self triggerConfigForKey:triggerKey];
+    trigger[@"enabled"] = @(YES);
+    trigger[@"action"] = action;
+    [self saveTriggerConfig:trigger forKey:triggerKey];
+}
+
+- (void)setCount:(NSInteger)count forTrigger:(NSString *)triggerKey {
+    NSMutableDictionary *trigger = [self triggerConfigForKey:triggerKey];
+    trigger[@"enabled"] = @(YES);
+    trigger[@"count"] = @(count);
+    [self saveTriggerConfig:trigger forKey:triggerKey];
+}
+
+- (void)chooseScriptForTrigger:(NSString *)triggerKey fromCell:(UITableViewCell *)cell {
+    NSArray<NSString *> *scripts = [self availableScriptPaths];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Run Script"
+        message:scripts.count ? @"Choose the script for this trigger." : @"No .bdl scripts were found."
+        preferredStyle:UIAlertControllerStyleActionSheet];
+
+    for (NSString *script in scripts) {
+        NSString *title = [[script lastPathComponent] stringByDeletingPathExtension];
+        [sheet addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            NSMutableDictionary *trigger = [self triggerConfigForKey:triggerKey];
+            trigger[@"enabled"] = @(YES);
+            trigger[@"action"] = ZX_ACTION_RUN_SCRIPT;
+            trigger[@"script"] = script;
+            [self saveTriggerConfig:trigger forKey:triggerKey];
+        }]];
+        if (sheet.actions.count >= 18) break;
+    }
+
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Enter Path..." style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self handleTriggerScriptTap:(TableViewCellWithEntry *)cell];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    UIPopoverPresentationController *pop = sheet.popoverPresentationController;
+    if (pop) {
+        pop.sourceView = cell;
+        pop.sourceRect = cell.bounds;
+    }
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+
+- (void)handleTriggerTap:(TableViewCellWithEntry*)cell {
+    NSString *triggerKey = [self triggerKeyFromCell:cell];
+    NSMutableDictionary *trigger = [self triggerConfigForKey:triggerKey];
+    NSString *title = [self triggerTitle:triggerKey];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:title
+        message:[NSString stringWithFormat:@"Current: %@", [self triggerSummaryForKey:triggerKey]]
+        preferredStyle:UIAlertControllerStyleActionSheet];
+
+    if ([trigger[@"enabled"] boolValue]) {
+        [sheet addAction:[UIAlertAction actionWithTitle:@"Disable Trigger" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+            NSMutableDictionary *updated = [self triggerConfigForKey:triggerKey];
+            updated[@"enabled"] = @(NO);
+            [self saveTriggerConfig:updated forKey:triggerKey];
+        }]];
+    } else {
+        [sheet addAction:[UIAlertAction actionWithTitle:@"Enable Trigger" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            NSMutableDictionary *updated = [self triggerConfigForKey:triggerKey];
+            updated[@"enabled"] = @(YES);
+            [self saveTriggerConfig:updated forKey:triggerKey];
+        }]];
+    }
+
+    for (NSInteger count = 1; count <= 5; count++) {
+        NSString *clickWord = count == 1 ? @"click" : @"clicks";
+        [sheet addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"%ld %@", (long)count, clickWord] style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            [self setCount:count forTrigger:triggerKey];
+        }]];
+    }
+
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Run Script..." style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self chooseScriptForTrigger:triggerKey fromCell:cell];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Toggle Panel" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self setAction:ZX_ACTION_TOGGLE_PANEL forTrigger:triggerKey];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Stop Script" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self setAction:ZX_ACTION_STOP_SCRIPT forTrigger:triggerKey];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Toggle Recording" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self setAction:ZX_ACTION_TOGGLE_RECORDING forTrigger:triggerKey];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Smart Toggle" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self setAction:ZX_ACTION_SMART_TOGGLE forTrigger:triggerKey];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+
+    UIPopoverPresentationController *pop = sheet.popoverPresentationController;
+    if (pop) {
+        pop.sourceView = cell;
+        pop.sourceRect = cell.bounds;
+    }
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+
 - (void)handleVolumeActionTap:(TableViewCellWithEntry*)cell {
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Trigger Action"
         message:@"Choose the action fired by the Double-click Volume Down event."
@@ -250,9 +422,11 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
 }
 
 - (void)handleTriggerScriptTap:(TableViewCellWithEntry*)cell {
-    NSString *current = [configManager getValueFromKey:@"double_click_volume_script"] ?: @"";
+    NSString *triggerKey = [self triggerKeyFromCell:cell];
+    NSMutableDictionary *trigger = [self triggerConfigForKey:triggerKey];
+    NSString *current = trigger[@"script"] ?: @"";
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Default Trigger Script"
-        message:@"Paste a .bdl path to run from the Volume Down action."
+        message:@"Paste a .bdl path to run from this trigger."
         preferredStyle:UIAlertControllerStyleAlert];
     [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
         textField.placeholder = @"/var/mobile/Library/ZXTouch/scripts/example.bdl";
@@ -260,15 +434,17 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
         textField.clearButtonMode = UITextFieldViewModeWhileEditing;
     }];
     [alert addAction:[UIAlertAction actionWithTitle:@"Clear" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
-        [configManager updateKey:@"double_click_volume_script" forValue:@""];
-        [configManager save];
-        [self reloadSettingsModel];
+        NSMutableDictionary *updated = [self triggerConfigForKey:triggerKey];
+        updated[@"script"] = @"";
+        [self saveTriggerConfig:updated forKey:triggerKey];
     }]];
     [alert addAction:[UIAlertAction actionWithTitle:@"Save" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSString *path = alert.textFields.firstObject.text ?: @"";
-        [configManager updateKey:@"double_click_volume_script" forValue:path];
-        [configManager save];
-        [self reloadSettingsModel];
+        NSMutableDictionary *updated = [self triggerConfigForKey:triggerKey];
+        updated[@"enabled"] = @(YES);
+        updated[@"action"] = ZX_ACTION_RUN_SCRIPT;
+        updated[@"script"] = path;
+        [self saveTriggerConfig:updated forKey:triggerKey];
     }]];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];

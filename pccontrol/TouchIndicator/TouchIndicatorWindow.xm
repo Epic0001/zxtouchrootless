@@ -30,6 +30,7 @@ static Boolean isShowing = false;
 static Boolean showCoordinates = true;
 static UIInterfaceOrientation cachedOrientation = UIInterfaceOrientationPortrait;
 static UIInterfaceOrientation cachedInputOrientation = UIInterfaceOrientationPortrait;
+static BOOL cachedMirrorInputX = NO;
 
 static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHIDServiceRef service, IOHIDEventRef parentEvent);
 
@@ -192,10 +193,11 @@ static UIInterfaceOrientation currentIndicatorOrientation(void)
         selectedOrientation = (UIInterfaceOrientation)frontOrientation;
     }
     cachedInputOrientation = supportsLandscape ? selectedOrientation : inputOrientationForDeviceOrientation(deviceOrientation);
+    cachedMirrorInputX = !supportsLandscape && deviceOrientation == UIDeviceOrientationLandscapeLeft;
 
     if (logNextIndicatorOrientation) {
-        NSString *message = [NSString stringWithFormat:@"bundle=%@ supportsLandscape=%d frontOrientation=%d selectedOrientation=%ld inputOrientation=%ld deviceOrientation=%ld\n",
-                             bundleIdentifier ?: @"unknown", supportsLandscape, frontOrientation, (long)selectedOrientation, (long)cachedInputOrientation, (long)deviceOrientation];
+        NSString *message = [NSString stringWithFormat:@"bundle=%@ supportsLandscape=%d frontOrientation=%d selectedOrientation=%ld inputOrientation=%ld deviceOrientation=%ld mirrorX=%d\n",
+                             bundleIdentifier ?: @"unknown", supportsLandscape, frontOrientation, (long)selectedOrientation, (long)cachedInputOrientation, (long)deviceOrientation, cachedMirrorInputX];
         NSLog(@"com.zjx.springboard.touchindicator: %@", message);
         appendTouchIndicatorDebugLog(message);
         logNextIndicatorOrientation = NO;
@@ -454,6 +456,9 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
                     xOnScreen = x * W;
                     yOnScreen = y * H;
                     break;
+            }
+            if (cachedMirrorInputX) {
+                xOnScreen = W - xOnScreen;
             }
 
             if ( touch == 1 && eventMask & 2 )

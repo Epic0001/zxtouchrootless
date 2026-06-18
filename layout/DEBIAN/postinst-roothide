@@ -73,7 +73,8 @@ SRC=$(jbroot /usr/lib/python3.7/site-packages)/zxtouch
 LIBBASE=$(jbroot /usr/lib)
 for SP in "$LIBBASE"/python3*/site-packages "$LIBBASE"/python3*/dist-packages "$LIBBASE"/python3/dist-packages; do
     if [ -d "$SP" ] && [ "$SP" != "$(jbroot /usr/lib/python3.7/site-packages)" ]; then
-        cp -rn "$SRC" "$SP/" 2>/dev/null || true
+        rm -rf "$SP/zxtouch"
+        cp -R "$SRC" "$SP/" 2>/dev/null || true
     fi
 done
 

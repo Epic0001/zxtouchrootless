@@ -63,7 +63,8 @@ done
 SRC=/var/jb/usr/lib/python3.7/site-packages/zxtouch
 for SP in /var/jb/usr/lib/python3*/site-packages /var/jb/usr/lib/python3*/dist-packages /var/jb/usr/lib/python3/dist-packages; do
     if [ -d "$SP" ] && [ "$SP" != "/var/jb/usr/lib/python3.7/site-packages" ]; then
-        cp -rn "$SRC" "$SP/" 2>/dev/null || true
+        rm -rf "$SP/zxtouch"
+        cp -R "$SRC" "$SP/" 2>/dev/null || true
     fi
 done
 

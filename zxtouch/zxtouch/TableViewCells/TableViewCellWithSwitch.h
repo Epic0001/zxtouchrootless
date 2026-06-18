@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface TableViewCellWithSwitch : UITableViewCell
 @property (weak, nonatomic) IBOutlet UILabel *title;
 @property (weak, nonatomic) IBOutlet UISwitch *switchBtn;
+@property (strong, nonatomic) UIImageView *iconView;
 
 
 - (void)setTitleText:(NSString *)title;

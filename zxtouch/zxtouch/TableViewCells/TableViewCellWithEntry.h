@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface TableViewCellWithEntry : UITableViewCell
 @property (weak, nonatomic) IBOutlet UILabel *title;
 @property (weak, nonatomic) IBOutlet UILabel *subTitle;
+@property (strong, nonatomic) UIImageView *iconView;
 @property (weak, nonatomic) NSString *clickHandler;
 
 @end

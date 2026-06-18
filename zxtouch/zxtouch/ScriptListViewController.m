@@ -109,6 +109,15 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.title = self.title.length ? self.title : @"Scripts";
+    if (@available(iOS 11.0, *)) {
+        self.navigationController.navigationBar.prefersLargeTitles = YES;
+        self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeAutomatic;
+    }
+    self._scriptListTableView.backgroundColor = [UIColor systemGroupedBackgroundColor];
+    self._scriptListTableView.rowHeight = 56;
+    self._scriptListTableView.separatorInset = UIEdgeInsetsMake(0, 70, 0, 16);
+    self._scriptListTableView.tableFooterView = [[UIView alloc] init];
     
     if (![[NSUserDefaults standardUserDefaults] boolForKey:@"notifyDoubleClickVolumnBtn"])
     {

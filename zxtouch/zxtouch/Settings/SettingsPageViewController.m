@@ -63,6 +63,7 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
 - (NSString *)iconNameForCellTitle:(NSString *)title {
     if ([title containsString:@"Web"]) return @"globe";
     if ([title containsString:@"Touch"]) return @"hand.tap";
+    if ([title containsString:@"Double-click"]) return @"bolt.badge.clock";
     if ([title containsString:@"Volume"]) return @"speaker.wave.2";
     if ([title containsString:@"Default Trigger"]) return @"play.square.stack";
     if ([title containsString:@"Switch App"]) return @"arrow.triangle.2.circlepath";
@@ -78,7 +79,7 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
     // Do any additional setup after loading the view.
     self.title = @"Settings";
     
-    sections = @[NSLocalizedString(@"remoteManagement", nil), NSLocalizedString(@"control", nil), NSLocalizedString(@"script", nil), @"Appearance", @"About"];
+    sections = @[NSLocalizedString(@"remoteManagement", nil), NSLocalizedString(@"control", nil), @"Automation", NSLocalizedString(@"script", nil), @"Appearance", @"About"];
     configManager = [[ConfigManager alloc] initWithPath:SPRINGBOARD_CONFIG_PATH];
     BOOL doubleClickPopup = YES;
     if ([configManager getValueFromKey:@"double_click_volume_show_popup"])
@@ -104,8 +105,10 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
         ],
         @[
             @{@"type": @(SETTING_CELL_ENTRY), @"title": NSLocalizedString(@"touchIndicator", nil), @"secondary_title": @"", @"row_click_handler": NSStringFromSelector(@selector(handleTouchIndicatorWithEntryCellInstance:))},
-            @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"doubleClickShowPopup", nil), @"switch_click_handler": NSStringFromSelector(@selector(handlePopupWindowDoubleClick:)), @"switch_init_status": @(doubleClickPopup)},
-            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Volume Down Action", @"secondary_title": [self triggerActionTitle:triggerAction], @"row_click_handler": NSStringFromSelector(@selector(handleVolumeActionTap:))},
+            @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"doubleClickShowPopup", nil), @"switch_click_handler": NSStringFromSelector(@selector(handlePopupWindowDoubleClick:)), @"switch_init_status": @(doubleClickPopup)}
+        ],
+        @[
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Double-click Volume Down", @"secondary_title": [self triggerActionTitle:triggerAction], @"row_click_handler": NSStringFromSelector(@selector(handleVolumeActionTap:))},
             @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Default Trigger Script", @"secondary_title": triggerScript.length ? triggerScript : @"Not set", @"row_click_handler": NSStringFromSelector(@selector(handleTriggerScriptTap:))}
         ],
         @[
@@ -129,7 +132,7 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
     
     _tableView.backgroundColor = [UIColor systemGroupedBackgroundColor];
     _tableView.tableFooterView = [[UIView alloc] init];
-    _tableView.rowHeight = 50;
+    _tableView.rowHeight = 54;
     _tableView.separatorInset = UIEdgeInsetsMake(0, 52, 0, 0);
 }
 
@@ -145,15 +148,17 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
     NSString *triggerAction = [configManager getValueFromKey:@"double_click_volume_action"] ?: ZX_ACTION_SMART_TOGGLE;
     NSString *triggerScript = [configManager getValueFromKey:@"double_click_volume_script"] ?: @"";
 
-    sections = @[NSLocalizedString(@"remoteManagement", nil), NSLocalizedString(@"control", nil), NSLocalizedString(@"script", nil), @"Appearance", @"About"];
+    sections = @[NSLocalizedString(@"remoteManagement", nil), NSLocalizedString(@"control", nil), @"Automation", NSLocalizedString(@"script", nil), @"Appearance", @"About"];
     cellsForEachSection = @[
         @[
             @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"webServer", nil), @"switch_click_handler": NSStringFromSelector(@selector(handleWebServerWithSwitchCellInstance:)), @"switch_init_status": @(NO)}
         ],
         @[
             @{@"type": @(SETTING_CELL_ENTRY), @"title": NSLocalizedString(@"touchIndicator", nil), @"secondary_title": @"", @"row_click_handler": NSStringFromSelector(@selector(handleTouchIndicatorWithEntryCellInstance:))},
-            @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"doubleClickShowPopup", nil), @"switch_click_handler": NSStringFromSelector(@selector(handlePopupWindowDoubleClick:)), @"switch_init_status": @(doubleClickPopup)},
-            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Volume Down Action", @"secondary_title": [self triggerActionTitle:triggerAction], @"row_click_handler": NSStringFromSelector(@selector(handleVolumeActionTap:))},
+            @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"doubleClickShowPopup", nil), @"switch_click_handler": NSStringFromSelector(@selector(handlePopupWindowDoubleClick:)), @"switch_init_status": @(doubleClickPopup)}
+        ],
+        @[
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Double-click Volume Down", @"secondary_title": [self triggerActionTitle:triggerAction], @"row_click_handler": NSStringFromSelector(@selector(handleVolumeActionTap:))},
             @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Default Trigger Script", @"secondary_title": triggerScript.length ? triggerScript : @"Not set", @"row_click_handler": NSStringFromSelector(@selector(handleTriggerScriptTap:))}
         ],
         @[
@@ -215,8 +220,8 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
 }
 
 - (void)handleVolumeActionTap:(TableViewCellWithEntry*)cell {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Volume Down Action"
-        message:@"Choose what double-click Volume Down does."
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Trigger Action"
+        message:@"Choose the action fired by the Double-click Volume Down event."
         preferredStyle:UIAlertControllerStyleActionSheet];
 
     [sheet addAction:[UIAlertAction actionWithTitle:@"Smart Toggle" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
@@ -383,8 +388,10 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
         
         cell.title.text = cellInfo[@"title"];
         cell.title.font = [UIFont systemFontOfSize:15 weight:UIFontWeightRegular];
-        cell.imageView.image = ZXSettingsSymbol([self iconNameForCellTitle:cellInfo[@"title"]]);
-        cell.imageView.tintColor = [UIColor systemBlueColor];
+        cell.iconView.image = ZXSettingsSymbol([self iconNameForCellTitle:cellInfo[@"title"]]);
+        cell.iconView.tintColor = [UIColor systemBlueColor];
+        cell.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
         [cell.switchBtn removeTarget:nil action:NULL forControlEvents:UIControlEventValueChanged];
         [cell.switchBtn addTarget:self action:NSSelectorFromString(cellInfo[@"switch_click_handler"]) forControlEvents:UIControlEventValueChanged];
         [cell.switchBtn setOn:[cellInfo[@"switch_init_status"] boolValue]];
@@ -409,8 +416,9 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
         cell.title.font = [UIFont systemFontOfSize:15 weight:UIFontWeightRegular];
         cell.subTitle.font = [UIFont systemFontOfSize:12 weight:UIFontWeightRegular];
         cell.subTitle.textColor = [UIColor secondaryLabelColor];
-        cell.imageView.image = ZXSettingsSymbol([self iconNameForCellTitle:cellInfo[@"title"]]);
-        cell.imageView.tintColor = [UIColor systemBlueColor];
+        cell.iconView.image = ZXSettingsSymbol([self iconNameForCellTitle:cellInfo[@"title"]]);
+        cell.iconView.tintColor = [UIColor systemBlueColor];
+        cell.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.clickHandler = cellInfo[@"row_click_handler"];
         
@@ -443,7 +451,7 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
     
     UILabel *title = [[UILabel alloc] init];
     title.translatesAutoresizingMaskIntoConstraints = NO;
-    title.font = [UIFont boldSystemFontOfSize:13];
+    title.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
     title.textColor = [UIColor secondaryLabelColor];
 
     title.text = sections[section];
@@ -451,14 +459,14 @@ static UIImage *ZXSettingsSymbol(NSString *name) {
     
     [resultView addSubview:title];
     
-    [[title.leftAnchor constraintEqualToAnchor:resultView.leftAnchor constant:10] setActive:YES];
+    [[title.leftAnchor constraintEqualToAnchor:resultView.leftAnchor constant:20] setActive:YES];
     [[title.bottomAnchor constraintEqualToAnchor:resultView.bottomAnchor constant:-5] setActive:YES];
 
     return resultView;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
-    return 60;
+    return 38;
 }
 /*
 #pragma mark - Navigation

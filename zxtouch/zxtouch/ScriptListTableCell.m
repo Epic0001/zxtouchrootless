@@ -25,9 +25,37 @@
     return image;
 }
 
+- (UIImageView *)activeIconView {
+    return self.iconImage ?: self.imageView;
+}
+
 - (void)awakeFromNib {
     [super awakeFromNib];
-    // Initialization code
+    self.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
+    self.contentView.backgroundColor = [UIColor secondarySystemGroupedBackgroundColor];
+    self.scriptTitle.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
+    self.scriptTitle.textColor = [UIColor labelColor];
+
+    UIImageView *icon = [self activeIconView];
+    icon.contentMode = UIViewContentModeScaleAspectFit;
+    icon.tintColor = [UIColor systemBlueColor];
+
+    UIImage *playImage = [self symbolNamed:@"play.circle.fill" fallback:@"play-icon"];
+    [_playButton setBackgroundImage:nil forState:UIControlStateNormal];
+    [_playButton setImage:playImage forState:UIControlStateNormal];
+    _playButton.tintColor = [UIColor systemGreenColor];
+    _playButton.backgroundColor = [UIColor clearColor];
+
+    for (UIView *view in self.contentView.subviews) {
+        if ([view isKindOfClass:[UIButton class]] && view != _playButton) {
+            UIButton *button = (UIButton *)view;
+            [button setTitle:@"" forState:UIControlStateNormal];
+            [button setBackgroundImage:nil forState:UIControlStateNormal];
+            [button setImage:[self symbolNamed:@"ellipsis.circle" fallback:@"gearshape"] forState:UIControlStateNormal];
+            button.tintColor = [UIColor secondaryLabelColor];
+            button.backgroundColor = [UIColor clearColor];
+        }
+    }
 }
 
 - (IBAction)playButtonClick:(id)sender {
@@ -73,17 +101,18 @@
         NSString *entry = [NSDictionary dictionaryWithContentsOfFile:[path stringByAppendingPathComponent:@"info.plist"]][@"Entry"];
         NSString *entryExtension = [[entry pathExtension] lowercaseString];
         UIImage *icon = nil;
+        UIColor *tint = [UIColor systemBlueColor];
         if ([entryExtension isEqualToString:@"raw"]) {
             icon = [self symbolNamed:@"waveform.path.ecg" fallback:@"script-icon"];
+            tint = [UIColor systemOrangeColor];
         } else if ([entryExtension isEqualToString:@"py"]) {
             icon = [self symbolNamed:@"chevron.left.forwardslash.chevron.right" fallback:@"script-icon"];
+            tint = [UIColor systemBlueColor];
         } else {
-            icon = [UIImage imageNamed:@"script-icon"];
+            icon = [self symbolNamed:@"play.square.stack" fallback:@"script-icon"];
         }
-        [[self imageView] setImage:icon];
-        if (@available(iOS 13.0, *)) {
-            [self imageView].tintColor = [UIColor systemBlueColor];
-        }
+        [[self activeIconView] setImage:icon];
+        [self activeIconView].tintColor = tint;
         
         return;
     }
@@ -95,18 +124,23 @@
     {
         NSString *extension = [[path pathExtension] lowercaseString];
         if ([extension isEqualToString:@"py"]) {
-            [[self imageView] setImage:[self symbolNamed:@"chevron.left.forwardslash.chevron.right" fallback:@"normal-file-icon"]];
+            [[self activeIconView] setImage:[self symbolNamed:@"chevron.left.forwardslash.chevron.right" fallback:@"normal-file-icon"]];
+            [self activeIconView].tintColor = [UIColor systemBlueColor];
         } else if ([extension isEqualToString:@"raw"]) {
-            [[self imageView] setImage:[self symbolNamed:@"waveform.path.ecg" fallback:@"normal-file-icon"]];
+            [[self activeIconView] setImage:[self symbolNamed:@"waveform.path.ecg" fallback:@"normal-file-icon"]];
+            [self activeIconView].tintColor = [UIColor systemOrangeColor];
         } else if ([extension isEqualToString:@"md"] || [extension isEqualToString:@"markdown"]) {
-            [[self imageView] setImage:[self symbolNamed:@"doc.richtext" fallback:@"normal-file-icon"]];
+            [[self activeIconView] setImage:[self symbolNamed:@"doc.richtext" fallback:@"normal-file-icon"]];
+            [self activeIconView].tintColor = [UIColor systemPurpleColor];
         } else {
-            [[self imageView] setImage:[UIImage imageNamed:@"normal-file-icon"]];
+            [[self activeIconView] setImage:[self symbolNamed:@"doc" fallback:@"normal-file-icon"]];
+            [self activeIconView].tintColor = [UIColor secondaryLabelColor];
         }
     }
     else
     {
-        [[self imageView] setImage:[UIImage imageNamed:@"folder-icon"]];
+        [[self activeIconView] setImage:[self symbolNamed:@"folder.fill" fallback:@"folder-icon"]];
+        [self activeIconView].tintColor = [UIColor systemBlueColor];
     }
 }
 

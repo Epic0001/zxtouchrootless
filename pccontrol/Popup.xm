@@ -343,7 +343,7 @@ void applyPanelDarkMode(BOOL dark) {
         if ([name hasSuffix:@".bdl"]) {
             [items addObject:@{@"label": [name substringToIndex:name.length-4], @"path": path, @"action": @"play"}];
         } else if (isDir) {
-            [items addObject:@{@"label": [NSString stringWithFormat:@"📁 %@", name], @"path": path, @"folderName": name, @"action": @"folder"}];
+            [items addObject:@{@"label": name, @"path": path, @"folderName": name, @"action": @"folder"}];
         }
     }
     dispatch_async(dispatch_get_main_queue(), ^{ [self populateScrollView:items]; });

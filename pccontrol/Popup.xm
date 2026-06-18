@@ -9,7 +9,7 @@
 #include "Config.h"
 #import <UIKit/UIKit.h>
 
-#define BTN_H 38
+#define BTN_H 40
 #define SETTINGS_KEY_REPEAT  @"repeat_times"
 #define SETTINGS_KEY_SPEED   @"speed"
 #define SETTINGS_KEY_INTERVAL @"interval"
@@ -17,7 +17,7 @@
 static UIButton* makeBtn(NSString *title, UIColor *color) {
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     [b setTitle:title forState:UIControlStateNormal];
-    b.titleLabel.font = [UIFont systemFontOfSize:14];
+    b.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
     b.backgroundColor = [UIColor secondarySystemBackgroundColor];
     b.layer.cornerRadius = 8;
     b.layer.borderColor = color.CGColor;
@@ -26,10 +26,21 @@ static UIButton* makeBtn(NSString *title, UIColor *color) {
     return b;
 }
 
-static UIView* makeSep() {
-    UIView *s = [[UIView alloc] init];
-    s.backgroundColor = [UIColor colorWithWhite:0.85 alpha:1.0];
-    return s;
+static UIImage *panelSymbol(NSString *name) {
+    if (@available(iOS 13.0, *)) {
+        return [UIImage systemImageNamed:name];
+    }
+    return nil;
+}
+
+static void styleIconButton(UIButton *button, NSString *symbolName, UIColor *color) {
+    UIImage *image = panelSymbol(symbolName);
+    if (image) {
+        [button setImage:image forState:UIControlStateNormal];
+        button.tintColor = color;
+    }
+    button.backgroundColor = [UIColor secondarySystemBackgroundColor];
+    button.layer.cornerRadius = 8;
 }
 
 @implementation PopupWindow
@@ -81,7 +92,7 @@ static UIView* makeSep() {
 
         UIViewController *rvc = [[UIViewController alloc] init];
         rvc.view.backgroundColor = [UIColor systemBackgroundColor];
-        rvc.view.layer.cornerRadius = 16;
+        rvc.view.layer.cornerRadius = 14;
         rvc.view.layer.borderColor = [UIColor separatorColor].CGColor;
         rvc.view.layer.borderWidth = 1;
         rvc.view.clipsToBounds = YES;
@@ -89,20 +100,21 @@ static UIView* makeSep() {
         UIView *cv = rvc.view;
 
         // Header
-        UILabel *ttl = [[UILabel alloc] initWithFrame:CGRectMake(12,10,pw-100,28)];
-        ttl.text = @"ZXTouch"; ttl.font = [UIFont boldSystemFontOfSize:17];
+        UILabel *ttl = [[UILabel alloc] initWithFrame:CGRectMake(12,8,pw-104,30)];
+        ttl.text = @"ZXTouch Panel"; ttl.font = [UIFont systemFontOfSize:17 weight:UIFontWeightSemibold];
         ttl.textColor = [UIColor labelColor]; [cv addSubview:ttl];
 
         // ⚙️ toggle — tap to enable/disable "ask settings before play"
         _gearBtn = [UIButton buttonWithType:UIButtonTypeSystem];
         [_gearBtn setTitle:@"⚙️" forState:UIControlStateNormal];
         _gearBtn.frame = CGRectMake(pw-80, 6, 36, 36);
-        _gearBtn.layer.cornerRadius = 8;
+        [_gearBtn setTitle:@"" forState:UIControlStateNormal];
+        styleIconButton(_gearBtn, @"slider.horizontal.3", [UIColor systemBlueColor]);
         [_gearBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
             _settingsVisible = !_settingsVisible;
             _gearBtn.backgroundColor = _settingsVisible ?
                 [UIColor colorWithRed:0.2 green:0.6 blue:1.0 alpha:0.25] :
-                [UIColor clearColor];
+                [UIColor secondarySystemBackgroundColor];
         }] forControlEvents:UIControlEventTouchUpInside];
         [cv addSubview:_gearBtn];
 
@@ -110,7 +122,8 @@ static UIView* makeSep() {
         UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
         [closeBtn setTitle:@"✕" forState:UIControlStateNormal];
         closeBtn.frame = CGRectMake(pw-42, 6, 36, 36);
-        closeBtn.titleLabel.font = [UIFont systemFontOfSize:17];
+        [closeBtn setTitle:@"" forState:UIControlStateNormal];
+        styleIconButton(closeBtn, @"xmark", [UIColor secondaryLabelColor]);
         [closeBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
             [self hide];
         }] forControlEvents:UIControlEventTouchUpInside];
@@ -122,14 +135,19 @@ static UIView* makeSep() {
         CGFloat btnW = (pw - 24) / 2;
         UIButton *recBtn = makeBtn(@"⏺  REC", [UIColor systemRedColor]);
         recBtn.frame = CGRectMake(8, 54, btnW, BTN_H);
+        [recBtn setTitle:@"Record" forState:UIControlStateNormal];
+        [recBtn setImage:panelSymbol(@"record.circle.fill") forState:UIControlStateNormal];
+        recBtn.tintColor = [UIColor systemRedColor];
         recBtn.backgroundColor = [UIColor.systemRedColor colorWithAlphaComponent:0.12];
         [recBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
             [self recordingStart];
         }] forControlEvents:UIControlEventTouchUpInside];
         [cv addSubview:recBtn];
 
-        UIButton *stopBtn = makeBtn(@"⏹  STOP", [UIColor darkGrayColor]);
+        UIButton *stopBtn = makeBtn(@"Stop", [UIColor secondaryLabelColor]);
         stopBtn.frame = CGRectMake(pw/2+4, 54, btnW, BTN_H);
+        [stopBtn setImage:panelSymbol(@"stop.fill") forState:UIControlStateNormal];
+        stopBtn.tintColor = [UIColor secondaryLabelColor];
         [stopBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
             [self stopPlaying];
         }] forControlEvents:UIControlEventTouchUpInside];
@@ -139,7 +157,7 @@ static UIView* makeSep() {
 
         // Scripts label — shows hint when settings mode on
         UILabel *sl = [[UILabel alloc] initWithFrame:CGRectMake(12, 54+BTN_H+14, pw-20, 18)];
-        sl.text = @"Scripts"; sl.font = [UIFont boldSystemFontOfSize:12];
+        sl.text = @"Scripts"; sl.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
         sl.textColor = [UIColor secondaryLabelColor]; [cv addSubview:sl];
 
         // Script scroll view
@@ -210,17 +228,23 @@ void applyPanelDarkMode(BOOL dark) {
         btn.layer.borderWidth = 1;
         NSString *action = item[@"action"];
         if ([action isEqualToString:@"folder"]) {
+            [btn setImage:panelSymbol(@"folder.fill") forState:UIControlStateNormal];
+            btn.tintColor = [UIColor systemBlueColor];
             [btn setTitleColor:[UIColor systemBlueColor] forState:UIControlStateNormal];
             NSString *fp = item[@"path"], *fn = item[@"folderName"];
             [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
                 [self showFolder:fp name:fn];
             }] forControlEvents:UIControlEventTouchUpInside];
         } else if ([action isEqualToString:@"back"]) {
+            [btn setImage:panelSymbol(@"chevron.left") forState:UIControlStateNormal];
+            btn.tintColor = [UIColor systemOrangeColor];
             [btn setTitleColor:[UIColor systemOrangeColor] forState:UIControlStateNormal];
             [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
                 [self refreshScriptList];
             }] forControlEvents:UIControlEventTouchUpInside];
         } else {
+            [btn setImage:panelSymbol(@"play.fill") forState:UIControlStateNormal];
+            btn.tintColor = [UIColor labelColor];
             NSString *fullPath = item[@"path"];
             [btn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
                 if (_settingsVisible) {
@@ -378,6 +402,10 @@ void applyPanelDarkMode(BOOL dark) {
 
 - (void) hide {
     dispatch_async(dispatch_get_main_queue(), ^{
+        _settingsVisible = NO;
+        if (_gearBtn) {
+            _gearBtn.backgroundColor = [UIColor secondarySystemBackgroundColor];
+        }
         _window.hidden = YES;
     });
     isShown = NO;

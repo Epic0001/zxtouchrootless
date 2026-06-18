@@ -101,6 +101,12 @@ BOOL openPopUpByDoubleVolumnDown = true;
 IOHIDEventSystemClientRef ioHIDEventSystemForPopupDectect = NULL;
 PopupWindow *popupWindow;
 
+#define ZX_ACTION_SMART_TOGGLE @"smart_toggle"
+#define ZX_ACTION_TOGGLE_PANEL @"toggle_panel"
+#define ZX_ACTION_STOP_SCRIPT @"stop_script"
+#define ZX_ACTION_TOGGLE_RECORDING @"toggle_recording"
+#define ZX_ACTION_RUN_SCRIPT @"run_script"
+
 
 void stopCrazyTap()
 {
@@ -146,6 +152,81 @@ void repoNameIsIOS13SimulateTouch()
 Get the sender id and unregister itself.
 */
 static CFTimeInterval startTime = 0;
+static void showOrHidePopup()
+{
+    if (![popupWindow isShown])
+        [popupWindow show];
+    else
+        [popupWindow hide];
+}
+
+static void runConfiguredTriggerAction(NSString *action, NSString *scriptPath)
+{
+    if (!action || [action length] == 0) action = ZX_ACTION_SMART_TOGGLE;
+
+    if ([action isEqualToString:ZX_ACTION_STOP_SCRIPT])
+    {
+        NSError *err = nil;
+        stopScriptPlaying(&err);
+        showAlertBox(@"ZXTouch", @"Script stopped.", 1);
+        return;
+    }
+
+    if ([action isEqualToString:ZX_ACTION_TOGGLE_RECORDING])
+    {
+        if (isRecordingStart())
+        {
+            stopRecording();
+            showAlertBox(@"ZXTouch", @"Recording stopped and saved.", 1);
+        }
+        else
+        {
+            NSError *err = nil;
+            startRecording(0, &err);
+            if (err) showAlertBox(@"Error", [NSString stringWithFormat:@"Unable to start recording: %@", [err localizedDescription]], 999);
+            else showAlertBox(@"ZXTouch", @"Recording started.", 1);
+        }
+        return;
+    }
+
+    if ([action isEqualToString:ZX_ACTION_RUN_SCRIPT])
+    {
+        if (scriptPath && [scriptPath length] > 0)
+        {
+            NSError *err = nil;
+            playScript((UInt8*)[scriptPath UTF8String], &err);
+            if (err) showAlertBox(@"Error", [err localizedDescription], 999);
+        }
+        else
+        {
+            showAlertBox(@"ZXTouch", @"No default trigger script is set.", 2);
+        }
+        return;
+    }
+
+    if ([action isEqualToString:ZX_ACTION_TOGGLE_PANEL])
+    {
+        showOrHidePopup();
+        return;
+    }
+
+    if (isScriptPlaying())
+    {
+        NSError *err = nil;
+        stopScriptPlaying(&err);
+        showAlertBox(@"ZXTouch", @"Script stopped.", 1);
+        return;
+    }
+    if (isRecordingStart())
+    {
+        stopRecording();
+        showAlertBox(@"ZXTouch", @"Recording stopped and saved.", 1);
+        [popupWindow show];
+        return;
+    }
+    showOrHidePopup();
+}
+
 // perform some action
 static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef service, IOHIDEventRef event)
 {
@@ -162,28 +243,8 @@ static void popupWindowCallBack(void* target, void* refcon, IOHIDServiceRef serv
                 return;
             }
 
-            if (isScriptPlaying())
-            {
-                NSError *err = nil;
-                stopScriptPlaying(&err);
-                showAlertBox(@"ZXTouch", @"Script stopped.", 1);
-                return;
-            }
-            if (isRecordingStart())
-            {
-                stopRecording();
-                showAlertBox(@"ZXTouch", @"Recording stopped and saved.", 1);
-                [popupWindow show];
-                return;
-            }
-            if (![popupWindow isShown])
-            {
-                [popupWindow show];
-            }
-            else
-            {
-                [popupWindow hide];
-            }
+            NSDictionary *config = [[NSDictionary alloc] initWithContentsOfFile:getCommonConfigFilePath()];
+            runConfiguredTriggerAction(config[@"double_click_volume_action"], config[@"double_click_volume_script"]);
         }
     }
 }

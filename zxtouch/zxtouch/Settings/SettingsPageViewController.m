@@ -26,6 +26,18 @@
 #define SETTING_CELL_SWITCH 0
 #define SETTING_CELL_ENTRY 1
 
+#define ZX_ACTION_SMART_TOGGLE @"smart_toggle"
+#define ZX_ACTION_TOGGLE_PANEL @"toggle_panel"
+#define ZX_ACTION_STOP_SCRIPT @"stop_script"
+#define ZX_ACTION_TOGGLE_RECORDING @"toggle_recording"
+#define ZX_ACTION_RUN_SCRIPT @"run_script"
+
+static UIImage *ZXSettingsSymbol(NSString *name) {
+    if (@available(iOS 13.0, *)) {
+        return [UIImage systemImageNamed:name];
+    }
+    return nil;
+}
 
 @interface SettingsPageViewController ()
 {
@@ -40,9 +52,31 @@
     ConfigManager *configManager;
 }
 
+- (NSString *)triggerActionTitle:(NSString *)action {
+    if ([action isEqualToString:ZX_ACTION_TOGGLE_PANEL]) return @"Toggle Panel";
+    if ([action isEqualToString:ZX_ACTION_STOP_SCRIPT]) return @"Stop Script";
+    if ([action isEqualToString:ZX_ACTION_TOGGLE_RECORDING]) return @"Toggle Recording";
+    if ([action isEqualToString:ZX_ACTION_RUN_SCRIPT]) return @"Run Default Script";
+    return @"Smart Toggle";
+}
+
+- (NSString *)iconNameForCellTitle:(NSString *)title {
+    if ([title containsString:@"Web"]) return @"globe";
+    if ([title containsString:@"Touch"]) return @"hand.tap";
+    if ([title containsString:@"Volume"]) return @"speaker.wave.2";
+    if ([title containsString:@"Default Trigger"]) return @"play.square.stack";
+    if ([title containsString:@"Switch App"]) return @"arrow.triangle.2.circlepath";
+    if ([title containsString:@"Example"]) return @"folder";
+    if ([title containsString:@"Registry"]) return @"list.bullet.rectangle";
+    if ([title containsString:@"Dark"]) return @"moon";
+    if ([title containsString:@"ZXTouch"]) return @"info.circle";
+    return @"gearshape";
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
+    self.title = @"Settings";
     
     sections = @[NSLocalizedString(@"remoteManagement", nil), NSLocalizedString(@"control", nil), NSLocalizedString(@"script", nil), @"Appearance", @"About"];
     configManager = [[ConfigManager alloc] initWithPath:SPRINGBOARD_CONFIG_PATH];
@@ -57,6 +91,8 @@
     {
         switchAppBeforeRunScript = [[configManager getValueFromKey:@"switch_app_before_run_script"] boolValue];
     }
+    NSString *triggerAction = [configManager getValueFromKey:@"double_click_volume_action"] ?: ZX_ACTION_SMART_TOGGLE;
+    NSString *triggerScript = [configManager getValueFromKey:@"double_click_volume_script"] ?: @"";
 
     BOOL darkMode = [[NSUserDefaults standardUserDefaults] boolForKey:@"dark_mode"];
 
@@ -68,7 +104,9 @@
         ],
         @[
             @{@"type": @(SETTING_CELL_ENTRY), @"title": NSLocalizedString(@"touchIndicator", nil), @"secondary_title": @"", @"row_click_handler": NSStringFromSelector(@selector(handleTouchIndicatorWithEntryCellInstance:))},
-            @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"doubleClickShowPopup", nil), @"switch_click_handler": NSStringFromSelector(@selector(handlePopupWindowDoubleClick:)), @"switch_init_status": @(doubleClickPopup)}
+            @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"doubleClickShowPopup", nil), @"switch_click_handler": NSStringFromSelector(@selector(handlePopupWindowDoubleClick:)), @"switch_init_status": @(doubleClickPopup)},
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Volume Down Action", @"secondary_title": [self triggerActionTitle:triggerAction], @"row_click_handler": NSStringFromSelector(@selector(handleVolumeActionTap:))},
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Default Trigger Script", @"secondary_title": triggerScript.length ? triggerScript : @"Not set", @"row_click_handler": NSStringFromSelector(@selector(handleTriggerScriptTap:))}
         ],
         @[
             @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"switchAppBeforePlaying", nil), @"switch_click_handler": NSStringFromSelector(@selector(handleSwitchAppBeforePlaying:)), @"switch_init_status": @(switchAppBeforeRunScript)},
@@ -91,6 +129,46 @@
     
     _tableView.backgroundColor = [UIColor systemGroupedBackgroundColor];
     _tableView.tableFooterView = [[UIView alloc] init];
+    _tableView.rowHeight = 50;
+    _tableView.separatorInset = UIEdgeInsetsMake(0, 52, 0, 0);
+}
+
+- (void)reloadSettingsModel {
+    configManager = [[ConfigManager alloc] initWithPath:SPRINGBOARD_CONFIG_PATH];
+    BOOL doubleClickPopup = YES;
+    if ([configManager getValueFromKey:@"double_click_volume_show_popup"])
+        doubleClickPopup = [[configManager getValueFromKey:@"double_click_volume_show_popup"] boolValue];
+    BOOL switchAppBeforeRunScript = YES;
+    if ([configManager getValueFromKey:@"switch_app_before_run_script"])
+        switchAppBeforeRunScript = [[configManager getValueFromKey:@"switch_app_before_run_script"] boolValue];
+    BOOL darkMode = [[NSUserDefaults standardUserDefaults] boolForKey:@"dark_mode"];
+    NSString *triggerAction = [configManager getValueFromKey:@"double_click_volume_action"] ?: ZX_ACTION_SMART_TOGGLE;
+    NSString *triggerScript = [configManager getValueFromKey:@"double_click_volume_script"] ?: @"";
+
+    sections = @[NSLocalizedString(@"remoteManagement", nil), NSLocalizedString(@"control", nil), NSLocalizedString(@"script", nil), @"Appearance", @"About"];
+    cellsForEachSection = @[
+        @[
+            @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"webServer", nil), @"switch_click_handler": NSStringFromSelector(@selector(handleWebServerWithSwitchCellInstance:)), @"switch_init_status": @(NO)}
+        ],
+        @[
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": NSLocalizedString(@"touchIndicator", nil), @"secondary_title": @"", @"row_click_handler": NSStringFromSelector(@selector(handleTouchIndicatorWithEntryCellInstance:))},
+            @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"doubleClickShowPopup", nil), @"switch_click_handler": NSStringFromSelector(@selector(handlePopupWindowDoubleClick:)), @"switch_init_status": @(doubleClickPopup)},
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Volume Down Action", @"secondary_title": [self triggerActionTitle:triggerAction], @"row_click_handler": NSStringFromSelector(@selector(handleVolumeActionTap:))},
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Default Trigger Script", @"secondary_title": triggerScript.length ? triggerScript : @"Not set", @"row_click_handler": NSStringFromSelector(@selector(handleTriggerScriptTap:))}
+        ],
+        @[
+            @{@"type": @(SETTING_CELL_SWITCH), @"title": NSLocalizedString(@"switchAppBeforePlaying", nil), @"switch_click_handler": NSStringFromSelector(@selector(handleSwitchAppBeforePlaying:)), @"switch_init_status": @(switchAppBeforeRunScript)},
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Example Scripts", @"secondary_title": EXAMPLE_SCRIPTS_PATH, @"row_click_handler": NSStringFromSelector(@selector(handleExamplesTap:))},
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"Script Registry", @"secondary_title": SCRIPT_REGISTRY_PATH, @"row_click_handler": NSStringFromSelector(@selector(handleRegistryTap:))}
+        ],
+        @[
+            @{@"type": @(SETTING_CELL_SWITCH), @"title": @"Dark Mode", @"switch_click_handler": NSStringFromSelector(@selector(handleDarkModeToggle:)), @"switch_init_status": @(darkMode)}
+        ],
+        @[
+            @{@"type": @(SETTING_CELL_ENTRY), @"title": @"ZXTouch Rootless 0.08", @"secondary_title": @"iOS 16 port by Epic0001", @"row_click_handler": NSStringFromSelector(@selector(handleCreditsTap:))}
+        ]
+    ];
+    [_tableView reloadData];
 }
 
 - (void)handleSwitchAppBeforePlaying:(UISwitch*)s {
@@ -128,6 +206,67 @@
     [socket send:@"901"];
     [socket recv:1024];
     [socket close];
+}
+
+- (void)setVolumeAction:(NSString *)action {
+    [configManager updateKey:@"double_click_volume_action" forValue:action];
+    [configManager save];
+    [self reloadSettingsModel];
+}
+
+- (void)handleVolumeActionTap:(TableViewCellWithEntry*)cell {
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Volume Down Action"
+        message:@"Choose what double-click Volume Down does."
+        preferredStyle:UIAlertControllerStyleActionSheet];
+
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Smart Toggle" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self setVolumeAction:ZX_ACTION_SMART_TOGGLE];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Toggle Panel" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self setVolumeAction:ZX_ACTION_TOGGLE_PANEL];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Stop Script" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self setVolumeAction:ZX_ACTION_STOP_SCRIPT];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Toggle Recording" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self setVolumeAction:ZX_ACTION_TOGGLE_RECORDING];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Run Default Script" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self setVolumeAction:ZX_ACTION_RUN_SCRIPT];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+
+    UIPopoverPresentationController *pop = sheet.popoverPresentationController;
+    if (pop) {
+        pop.sourceView = cell;
+        pop.sourceRect = cell.bounds;
+    }
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+
+- (void)handleTriggerScriptTap:(TableViewCellWithEntry*)cell {
+    NSString *current = [configManager getValueFromKey:@"double_click_volume_script"] ?: @"";
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Default Trigger Script"
+        message:@"Paste a .bdl path to run from the Volume Down action."
+        preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        textField.placeholder = @"/var/mobile/Library/ZXTouch/scripts/example.bdl";
+        textField.text = current;
+        textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    }];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Clear" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+        [configManager updateKey:@"double_click_volume_script" forValue:@""];
+        [configManager save];
+        [self reloadSettingsModel];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Save" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        NSString *path = alert.textFields.firstObject.text ?: @"";
+        [configManager updateKey:@"double_click_volume_script" forValue:path];
+        [configManager save];
+        [self reloadSettingsModel];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)handleWebServerWithSwitchCellInstance:(UISwitch*)s {
@@ -243,6 +382,10 @@
         }
         
         cell.title.text = cellInfo[@"title"];
+        cell.title.font = [UIFont systemFontOfSize:15 weight:UIFontWeightRegular];
+        cell.imageView.image = ZXSettingsSymbol([self iconNameForCellTitle:cellInfo[@"title"]]);
+        cell.imageView.tintColor = [UIColor systemBlueColor];
+        [cell.switchBtn removeTarget:nil action:NULL forControlEvents:UIControlEventValueChanged];
         [cell.switchBtn addTarget:self action:NSSelectorFromString(cellInfo[@"switch_click_handler"]) forControlEvents:UIControlEventValueChanged];
         [cell.switchBtn setOn:[cellInfo[@"switch_init_status"] boolValue]];
         
@@ -263,6 +406,12 @@
         
         cell.title.text = cellInfo[@"title"];
         cell.subTitle.text = cellInfo[@"secondary_title"];
+        cell.title.font = [UIFont systemFontOfSize:15 weight:UIFontWeightRegular];
+        cell.subTitle.font = [UIFont systemFontOfSize:12 weight:UIFontWeightRegular];
+        cell.subTitle.textColor = [UIColor secondaryLabelColor];
+        cell.imageView.image = ZXSettingsSymbol([self iconNameForCellTitle:cellInfo[@"title"]]);
+        cell.imageView.tintColor = [UIColor systemBlueColor];
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.clickHandler = cellInfo[@"row_click_handler"];
         
         result = cell;

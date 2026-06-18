@@ -158,6 +158,14 @@ static BOOL frontMostAppSupportsLandscape(NSString *bundleIdentifier)
     return NO;
 }
 
+static BOOL isValidInterfaceOrientation(int orientation)
+{
+    return orientation == UIInterfaceOrientationPortrait ||
+           orientation == UIInterfaceOrientationPortraitUpsideDown ||
+           orientation == UIInterfaceOrientationLandscapeLeft ||
+           orientation == UIInterfaceOrientationLandscapeRight;
+}
+
 static UIInterfaceOrientation inputOrientationForDeviceOrientation(UIDeviceOrientation deviceOrientation)
 {
     if (deviceOrientation == UIDeviceOrientationLandscapeLeft) {
@@ -180,7 +188,7 @@ static UIInterfaceOrientation currentIndicatorOrientation(void)
     UIInterfaceOrientation selectedOrientation = UIInterfaceOrientationPortrait;
     UIDeviceOrientation deviceOrientation = [[UIDevice currentDevice] orientation];
 
-    if (supportsLandscape && frontOrientation >= UIInterfaceOrientationPortrait && frontOrientation <= UIInterfaceOrientationLandscapeRight) {
+    if (supportsLandscape && isValidInterfaceOrientation(frontOrientation)) {
         selectedOrientation = (UIInterfaceOrientation)frontOrientation;
     }
     cachedInputOrientation = supportsLandscape ? selectedOrientation : inputOrientationForDeviceOrientation(deviceOrientation);

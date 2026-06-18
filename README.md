@@ -10,6 +10,29 @@ Discord: https://discord.gg/acSXfyz
 
 ---
 
+## Current Revival Status
+
+This fork has been actively revived for modern rootless jailbreaks. Recent releases add:
+
+- Modernized Scripts, Settings, and floating panel UI
+- Separate visual treatment for Python scripts, raw scripts, folders, readmes, and normal files
+- Bundled example scripts installed under `/var/mobile/Library/ZXTouch/scripts/examples/`
+- Script registry installed at `/var/mobile/Library/ZXTouch/config/tweak/script_registry.plist`
+- Automatic `README.md` preview inside script folders
+- Native `prompt_input(...)` support for Python scripts
+- Built-in Activator-style automation triggers
+- Easier script selection for trigger actions, without manually pasting `.bdl` paths
+
+The built-in automation system currently supports assigning actions to Volume Up, Volume Down, and Home button click patterns. Each trigger can use 1-5 clicks and can run one of these actions:
+
+- Smart Toggle
+- Toggle Panel
+- Stop Script
+- Toggle Recording
+- Run Script
+
+---
+
 ## Tested Compatibility
 
 | Jailbreak | iOS Version | Status |
@@ -33,6 +56,9 @@ Discord: https://discord.gg/acSXfyz
 - **OCR** working via Vision framework
 - **Volume-down stop** working for Python scripts
 - **Accurate script finished popup** — shows correct play count and script name
+- **Refreshed script browser and settings UI** — modern icons, cleaner grouping, README previews, and separate handling for Python/raw scripts
+- **Built-in automation triggers** — assign button click patterns to panel, recording, stop, or run-script actions
+- **Native script prompts** — Python scripts can request user input with `prompt_input(...)`
 
 ---
 
@@ -123,6 +149,32 @@ Double-click **volume down** to open/close the panel.
 - **⏹ STOP** — stop a running script
 - Settings → **Dark Mode** to toggle dark theme on app and panel
 
+### Scripts and Examples
+
+Example scripts are installed automatically with the `.deb` under:
+
+```text
+/var/mobile/Library/ZXTouch/scripts/examples/
+```
+
+The app keeps a script registry at:
+
+```text
+/var/mobile/Library/ZXTouch/config/tweak/script_registry.plist
+```
+
+The registry helps the app display script metadata, icons, README previews, and script selections for automation actions.
+
+### Automation Triggers
+
+Open **Settings → Automation** in the app to assign actions to button click patterns. Current trigger sources are:
+
+- Volume Up
+- Volume Down
+- Home Button
+
+Each trigger can be set to 1-5 clicks and can run Smart Toggle, Toggle Panel, Stop Script, Toggle Recording, or a selected `.bdl` script.
+
 ---
 
 ## Documentation (Python)
@@ -151,6 +203,7 @@ device = zxtouch("127.0.0.1")  # use device IP for remote control
 | `touch` / `touch_with_list` | ✅ Working |
 | `switch_to_app` | ✅ Working |
 | `show_alert_box` | ✅ Working |
+| `prompt_input` | ✅ Working |
 | `run_shell_command` | ✅ Working |
 | `show_toast` | ✅ Working |
 | `pick_color` | ✅ Working |
@@ -253,6 +306,43 @@ def show_alert_box(title, content, duration):
     Returns:
         Result tuple (success, error_or_empty)
     """
+```
+
+---
+
+## Prompt For User Input
+
+```python
+def prompt_input(title, message="", placeholder="", default_value="", secure=False):
+    """Show a native input dialog and return the entered text
+
+    Args:
+        title: dialog title
+        message: optional message shown above the text field
+        placeholder: optional text field placeholder
+        default_value: optional starting value
+        secure: True to hide typed text, useful for passwords
+
+    Returns:
+        Result tuple. On success, result[1] is the entered string.
+        Cancel returns (False, error_or_empty).
+    """
+```
+
+**Code Example**
+
+```python
+from zxtouch.client import zxtouch
+
+device = zxtouch("127.0.0.1")
+success, value = device.prompt_input(
+    "Search",
+    "What should the script look for?",
+    placeholder="Type a keyword"
+)
+
+if success:
+    device.show_toast(0, "You entered: " + value, 2)
 ```
 
 ---

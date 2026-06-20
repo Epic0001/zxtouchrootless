@@ -20,10 +20,11 @@ mkdir -p /var/mobile/Library/ZXTouch/scripts/examples/
 mkdir -p /var/mobile/Library/ZXTouch/config/tweak/
 mkdir -p /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/
 
-# Copy example scripts (only if not already there)
+# Copy bundled example scripts. These are maintained by the package, so refresh
+# them on upgrade while leaving unrelated user scripts alone.
 EXAMPLES=/var/jb/usr/share/zxtouch/examples
 if [ -d "$EXAMPLES" ]; then
-    cp -rn "$EXAMPLES/"* /var/mobile/Library/ZXTouch/scripts/examples/ 2>/dev/null || true
+    cp -Rf "$EXAMPLES/"* /var/mobile/Library/ZXTouch/scripts/examples/ 2>/dev/null || true
 fi
 
 REGISTRY=/var/mobile/Library/ZXTouch/config/tweak/script_registry.plist

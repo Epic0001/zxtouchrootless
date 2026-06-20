@@ -14,14 +14,20 @@ elapsed = time.time() - started
 print("image_match result:", result_tuple, "elapsed:", round(elapsed, 3))
 
 if not result_tuple[0]:
-    device.show_alert_box(
-        "Image Match Failed",
-        "Target: examples\nElapsed: %.3fs\n\n%s\n\nOpen a screen where the word examples is visible, then run this again." % (elapsed, result_tuple[1]),
-        0
+    device.show_toast(
+        TOAST_ERROR,
+        "No match. Best info in log. %.2fs" % elapsed,
+        4,
+        TOAST_BUTTOM
     )
 else:
     result_dict = result_tuple[1]
-    message = "X: {x}\nY: {y}\nWidth: {width}\nHeight: {height}\nElapsed: %.3fs" % elapsed
-    device.show_alert_box("Image Match Found", message.format(**result_dict), 0)
+    device.show_toast(
+        TOAST_SUCCESS,
+        "Found examples at X:%s Y:%s %.2fs" % (result_dict["x"], result_dict["y"], elapsed),
+        4,
+        TOAST_BUTTOM
+    )
 
+time.sleep(4.5)
 device.disconnect()

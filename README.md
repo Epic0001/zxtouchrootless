@@ -366,7 +366,7 @@ def run_shell_command(command):
 ## Image Matching
 
 ```python
-def image_match(template_path, acceptable_value=0.8, max_try_times=4, scaleRation=0.8):
+def image_match(template_path, acceptable_value=0.8, max_try_times=2, scaleRation=0.8):
     """Match screen against a template image using normalized cross-correlation
 	
     Args:

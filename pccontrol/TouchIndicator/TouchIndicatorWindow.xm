@@ -47,25 +47,6 @@ static TouchIndicatorWindow *touchIndicatorWindow;
 static BOOL logNextIndicatorOrientation = NO;
 static BOOL logNextWindowGeometry = NO;
 
-@interface ZXTouchIndicatorRootViewController : UIViewController
-@end
-
-@implementation ZXTouchIndicatorRootViewController
-
-- (BOOL)shouldAutorotate {
-    return NO;
-}
-
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    return UIInterfaceOrientationMaskPortrait;
-}
-
-- (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
-    return UIInterfaceOrientationPortrait;
-}
-
-@end
-
 static void appendTouchIndicatorDebugLog(NSString *message)
 {
     NSString *logPath = @"/var/mobile/Library/ZXTouch/logs/orientation-debug.log";
@@ -184,6 +165,39 @@ static BOOL isValidInterfaceOrientation(int orientation)
            orientation == UIInterfaceOrientationPortraitUpsideDown ||
            orientation == UIInterfaceOrientationLandscapeLeft ||
            orientation == UIInterfaceOrientationLandscapeRight;
+}
+
+static CGPoint portraitPointFromInputPoint(CGFloat x, CGFloat y, UIInterfaceOrientation inputOrientation)
+{
+    switch (inputOrientation) {
+        case UIInterfaceOrientationLandscapeLeft:
+            return CGPointMake(y, 1.0f - x);
+        case UIInterfaceOrientationLandscapeRight:
+            return CGPointMake(1.0f - y, x);
+        case UIInterfaceOrientationPortraitUpsideDown:
+            return CGPointMake(1.0f - x, 1.0f - y);
+        default:
+            return CGPointMake(x, y);
+    }
+}
+
+static CGPoint drawPointFromPortraitPoint(CGPoint portraitPoint, UIInterfaceOrientation drawOrientation, CGSize canvasSize)
+{
+    CGFloat x = portraitPoint.x;
+    CGFloat y = portraitPoint.y;
+    CGFloat W = canvasSize.width;
+    CGFloat H = canvasSize.height;
+
+    switch (drawOrientation) {
+        case UIInterfaceOrientationLandscapeLeft:
+            return CGPointMake((1.0f - y) * W, x * H);
+        case UIInterfaceOrientationLandscapeRight:
+            return CGPointMake(y * W, (1.0f - x) * H);
+        case UIInterfaceOrientationPortraitUpsideDown:
+            return CGPointMake((1.0f - x) * W, (1.0f - y) * H);
+        default:
+            return CGPointMake(x * W, y * H);
+    }
 }
 
 static UIInterfaceOrientation currentIndicatorOrientation(void)
@@ -445,36 +459,19 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
                 cachedOrientation = currentIndicatorOrientation();
             }
 
-            UIInterfaceOrientation ori = cachedOrientation;
-            CGSize canvasSize = stableCanvasSizeForOrientation(ori);
-            CGFloat W = canvasSize.width, H = canvasSize.height;
-
-            switch (ori) {
-                case UIInterfaceOrientationLandscapeLeft:
-                    xOnScreen = (1.0f - y) * W;
-                    yOnScreen = x * H;
-                    break;
-                case UIInterfaceOrientationLandscapeRight:
-                    xOnScreen = y * W;
-                    yOnScreen = (1.0f - x) * H;
-                    break;
-                case UIInterfaceOrientationPortraitUpsideDown:
-                    xOnScreen = (1.0f - x) * W;
-                    yOnScreen = (1.0f - y) * H;
-                    break;
-                default:
-                    xOnScreen = x * W;
-                    yOnScreen = y * H;
-                    break;
-            }
+            CGSize canvasSize = stableCanvasSizeForOrientation(cachedOrientation);
+            CGPoint portraitPoint = portraitPointFromInputPoint(x, y, cachedInputOrientation);
+            CGPoint drawPoint = drawPointFromPortraitPoint(portraitPoint, cachedOrientation, canvasSize);
+            xOnScreen = drawPoint.x;
+            yOnScreen = drawPoint.y;
             if (cachedMirrorInputX) {
-                xOnScreen = W - xOnScreen;
+                xOnScreen = canvasSize.width - xOnScreen;
             }
 
             if ( touch == 1 && eventMask & 2 )
             {
-                NSString *message = [NSString stringWithFormat:@"touch raw=[%.4f %.4f] screen=[%.1f %.1f] canvas=[%.1f %.1f] ori=%ld inputOri=%ld\n",
-                                     x, y, xOnScreen, yOnScreen, W, H, (long)ori, (long)cachedInputOrientation];
+                NSString *message = [NSString stringWithFormat:@"touch raw=[%.4f %.4f] portrait=[%.4f %.4f] screen=[%.1f %.1f] canvas=[%.1f %.1f] drawOri=%ld inputOri=%ld\n",
+                                     x, y, portraitPoint.x, portraitPoint.y, xOnScreen, yOnScreen, canvasSize.width, canvasSize.height, (long)cachedOrientation, (long)cachedInputOrientation];
                 appendTouchIndicatorDebugLog(message);
                 [touchIndicatorWindow showIndicator:index withX:xOnScreen andY:yOnScreen majorRadius:majorRadius];
             }
@@ -503,12 +500,8 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 - (void)updateWindowFrameForOrientation:(UIInterfaceOrientation)orientation {
     CGSize canvasSize = stableCanvasSizeForOrientation(orientation);
     [UIView performWithoutAnimation:^{
-        _window.transform = CGAffineTransformIdentity;
         _window.frame = CGRectMake(0, 0, canvasSize.width, canvasSize.height);
-        _window.bounds = CGRectMake(0, 0, canvasSize.width, canvasSize.height);
-        _window.center = CGPointMake(canvasSize.width / 2.0f, canvasSize.height / 2.0f);
         _window.rootViewController.view.frame = _window.bounds;
-        _window.rootViewController.view.transform = CGAffineTransformIdentity;
     }];
 }
 
@@ -524,11 +517,10 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
                 _window = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, screenBoundsWidth, screenBoundsHeight)];
             }
             _window.windowLevel = UIWindowLevelAlert + 2;
-            _window.rootViewController = [[ZXTouchIndicatorRootViewController alloc] init];
+            _window.rootViewController = [[UIViewController alloc] init];
             [_window setBackgroundColor:[UIColor clearColor]];
             [_window setUserInteractionEnabled:NO];
-            [_window setAutoresizingMask:UIViewAutoresizingNone];
-            _window.clipsToBounds = NO;
+            [_window setAutoresizingMask:18];
             [self updateWindowFrameForOrientation:cachedOrientation];
 
             indicatorColor = [UIColor colorWithRed:255 green:0 blue:0 alpha:0.5];
@@ -621,7 +613,7 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
 - (void) show {
     dispatch_async(dispatch_get_main_queue(), ^{
         [self updateWindowFrameForOrientation:cachedOrientation];
-        _window.autoresizingMask = UIViewAutoresizingNone;
+        _window.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
         _window.hidden = NO;
     });
 }

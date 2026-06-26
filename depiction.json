@@ -8,7 +8,7 @@
       "views": [
         {
           "viewClass": "DepictionMarkdownView",
-          "markdown": "## ZXTouch Rootless\n\nSystem-wide touch simulation for **iOS 15–16**. Supports Dopamine (rootless) and Roothide/Serotonin.\n\n### Features\n- Touch simulation (up to 19 fingers)\n- Python script automation\n- Image matching (no OpenCV)\n- OCR via Vision framework\n- Color picker & searcher\n- Text input & keyboard control\n- iOS Shortcuts integration\n- Dark mode\n\n### Requirements\n- iOS 15.0 – 16.6.1\n- Dopamine or Roothide jailbreak\n- Python 3 from Procursus (for scripts)"
+          "markdown": "## ZXTouch Rootless\n\nSystem-wide touch simulation for **iOS 15-16**. Supports Dopamine (rootless) and Roothide/Serotonin.\n\n### Features\n- Touch simulation (up to 19 fingers)\n- Python script automation\n- Image matching (no OpenCV)\n- OCR via Vision framework\n- Color picker & searcher\n- Text input & keyboard control\n- iOS Shortcuts integration\n- Dark mode\n\n### Requirements\n- iOS 15.0 - 16.6.1\n- Dopamine or Roothide jailbreak\n- Python 3 from Procursus recommended; bundled fallback available"
         },
         {
           "viewClass": "DepictionSeparatorView"
@@ -36,7 +36,7 @@
       "views": [
         {
           "viewClass": "DepictionMarkdownView",
-          "markdown": "## v0.08.1\n- Improved script list UI and settings\n- Added separate Python/raw script indicators\n- Moved bundled examples into a dedicated examples folder\n- Added script registry metadata\n- Added lightweight syntax highlighting in the editor\n- Added script input prompts through `device.prompt_input(...)`\n- Shows README files inside script folders\n- Hardened script log helper creation\n- Improved touch indicator behavior in portrait-locked apps\n\n## v0.08\n- Full roothide (Serotonin) support\n- image_match working via Accelerate.framework\n- iOS Shortcuts integration fixed\n- insert_text / keyboard control working\n- Python 3.9+ auto-detection & setup\n- Restored log format with timestamps\n- Touch indicator orientation fix"
+          "markdown": "## v0.08.24\n- Package version 0.1.1 for repo installs\n- Panel script settings now remember their enabled state\n- Fixed repeat/speed/interval leakage when panel settings are disabled\n- Hardened Python runtime setup with rootless paths and bundled fallback\n- Fixed false Script Error alerts after successful Python scripts\n\n## v0.08.1\n- Improved script list UI and settings\n- Added separate Python/raw script indicators\n- Moved bundled examples into a dedicated examples folder\n- Added script registry metadata\n- Added lightweight syntax highlighting in the editor\n- Added script input prompts through `device.prompt_input(...)`\n- Shows README files inside script folders\n- Hardened script log helper creation\n- Improved touch indicator behavior in portrait-locked apps\n\n## v0.08\n- Full roothide (Serotonin) support\n- image_match working via Accelerate.framework\n- iOS Shortcuts integration fixed\n- insert_text / keyboard control working\n- Python 3.9+ auto-detection & setup\n- Restored log format with timestamps\n- Touch indicator orientation fix"
         }
       ]
     }

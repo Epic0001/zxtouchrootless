@@ -1,6 +1,6 @@
 Package: com.zjx.ioscontrol
 Name: ZXTouch
-Version: 0.1.0
+Version: 0.1.1
 Architecture: iphoneos-arm64
 Description: iOS 15-16 rootless touch simulation (Dopamine)
 Maintainer: Epic0001
@@ -8,18 +8,18 @@ Author: Epic0001
 Section: Utilities
 Tag: role::developer
 Depends: mobilesubstrate | ellekit, firmware (>= 15.0)
-Filename: debs/com.zjx.ioscontrol_0.1.0_rootless.deb
-Size: 7901166
-MD5sum: 08411cb62f501796c35f513f7922b9cd
-SHA1: 9f481f4458a9305cab54023e5e78ee9188b957a3
-SHA256: c557304b19d3b0f2f3db5cd4b630bff88dd760e88e0831fda78976b84a100be9
+Filename: debs/com.zjx.ioscontrol_0.1.1_rootless.deb
+Size: 7930412
+MD5sum: e096c97dd9ddb79405e3ddc27ec78d0d
+SHA1: 4b636c345cd9b779b96c6c457f4fe1a504edc67e
+SHA256: e3d6bd0ef7032e44bda423c9e0f365ca43fee794daa21519ed744c8121bf0f78
 Homepage: https://epic0001.github.io/zxtouchrootless
 Depiction: https://epic0001.github.io/zxtouchrootless
 SileoDepiction: https://epic0001.github.io/zxtouchrootless/depiction.json
 
 Package: com.zjx.ioscontrol
 Name: ZXTouch (Roothide)
-Version: 0.1.0
+Version: 0.1.1
 Architecture: iphoneos-arm64e
 Description: iOS 15-16 roothide touch simulation (Serotonin)
 Maintainer: Epic0001
@@ -27,11 +27,11 @@ Author: Epic0001
 Section: Utilities
 Tag: role::developer
 Depends: mobilesubstrate | ellekit, firmware (>= 15.0)
-Filename: debs/com.zjx.ioscontrol_0.1.0_roothide.deb
-Size: 7897680
-MD5sum: f550bad2c551ab78b4f34f2d64fcd310
-SHA1: 9f01059392684bb601012b7367c1cc8db5530b6e
-SHA256: e9871ea1af8f9d26d150b44a29d2151b2fe32b0c00ff242a7af91d13541f1144
+Filename: debs/com.zjx.ioscontrol_0.1.1_roothide.deb
+Size: 7928012
+MD5sum: 51a756d7c82c32b512fa7e5635fd03c5
+SHA1: c3dca9e8c8c0a95a63084c1b6dbdefc99da7e602
+SHA256: ce6fd30aa59c8d5b296e813e2bb66a7b2cecf71cea0fb244f4c04e0e4d97b1e6
 Homepage: https://epic0001.github.io/zxtouchrootless
 Depiction: https://epic0001.github.io/zxtouchrootless
 SileoDepiction: https://epic0001.github.io/zxtouchrootless/depiction.json

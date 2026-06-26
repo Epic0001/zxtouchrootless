@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "Config.h"
 #import <sys/utsname.h>
+#import <sys/wait.h>
 #include <dlfcn.h>
 
 int call_system(const char *cmd)
@@ -153,8 +154,14 @@ pid_t system2(const char * command, int * infp, int * outfp)
         close(p_stdin[1]);
         dup2(p_stdin[0], 0);
         close(p_stdout[0]);
-        dup2(p_stdout[1], 1);
-        dup2(::open("/dev/null", O_RDONLY), 2);
+        if (outfp == NULL) {
+            int devnull = ::open("/dev/null", O_WRONLY);
+            dup2(devnull, 1);
+            dup2(devnull, 2);
+        } else {
+            dup2(p_stdout[1], 1);
+            dup2(p_stdout[1], 2);
+        }
         /// Close all other descriptors for the safety sake.
         for (int i = 3; i < 4096; ++i)
             ::close(i);
@@ -179,9 +186,12 @@ pid_t system2(const char * command, int * infp, int * outfp)
         *outfp = p_stdout[0];
     }
 
+    int status = 0;
 	if (pid > 0)
 	{
-		waitpid(pid, NULL, 0);
+		waitpid(pid, &status, 0);
 	}
+    if (WIFEXITED(status)) return WEXITSTATUS(status);
+    if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
     return pid;
 }

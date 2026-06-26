@@ -37,18 +37,17 @@ fi
 # Patch add_datetime.sh shebang — roothide has no fixed /var/jb path
 SH=$(jbroot /bin/sh)
 SCRIPT=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh
-if [ ! -f "$SCRIPT" ]; then
-    cat > "$SCRIPT" << 'EOF'
+cat > "$SCRIPT" << 'EOF'
 #!/bin/sh
 OUTPUT=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output
 DATE=$(jbroot /usr/bin/date 2>/dev/null)
 if [ ! -x "$DATE" ]; then DATE=/usr/bin/date; fi
+if [ ! -x "$DATE" ]; then DATE=/bin/date; fi
 echo "$($DATE '+%m-%d-%Y %T'): Start running script. Script path: $1" >> "$OUTPUT"
 while IFS= read -r line; do
     echo "$($DATE '+%m-%d-%Y %T'): $line" >> "$OUTPUT"
 done
 EOF
-fi
 if [ -f "$SCRIPT" ]; then
     printf '#!%s\n' "$SH" > /tmp/adt_new.sh
     tail -n +2 "$SCRIPT" >> /tmp/adt_new.sh
@@ -61,8 +60,15 @@ chown -R mobile:mobile /var/mobile/Library/ZXTouch
 # Fix broken python3 symlink — Procursus points it to /bin/python3 which doesn't resolve on roothide
 # Also skip python3.7 which is broken on iOS 16
 PYTHON3=$(jbroot /usr/bin/python3)
-for VER in python3.11 python3.10 python3.9 python3.8; do
-    PYVER=$(jbroot /usr/bin/$VER)
+for PYVER in \
+    "$(jbroot /usr/bin/python3.11)" \
+    "$(jbroot /usr/bin/python3.10)" \
+    "$(jbroot /usr/bin/python3.9)" \
+    "$(jbroot /usr/bin/python3.8)" \
+    "$(jbroot /bin/python3.7)" \
+    "$(jbroot /bin/python3)" \
+    /usr/bin/python3 \
+    /bin/python3; do
     if [ -x "$PYVER" ]; then
         ln -sf "$PYVER" "$PYTHON3"
         break

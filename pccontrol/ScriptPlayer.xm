@@ -7,8 +7,86 @@
 #include "AlertBox.h"
 #include "Config.h"
 #include "Common.h"
+#import <sys/stat.h>
 
 static BOOL isPlaying = false;
+
+static NSString *ZXShellQuote(NSString *value)
+{
+    if (!value) return @"''";
+    return [NSString stringWithFormat:@"'%@'", [value stringByReplacingOccurrencesOfString:@"'" withString:@"'\\''"]];
+}
+
+static NSString *ZXFirstExecutablePath(NSArray<NSString *> *candidates)
+{
+    NSFileManager *fm = [NSFileManager defaultManager];
+    for (NSString *path in candidates) {
+        if (path.length > 0 && [fm isExecutableFileAtPath:path]) {
+            return path;
+        }
+    }
+    return nil;
+}
+
+static NSString *ZXPythonPath(void)
+{
+    return ZXFirstExecutablePath(@[
+        jbroot(@"/usr/bin/python3"),
+        jbroot(@"/usr/bin/python3.11"),
+        jbroot(@"/usr/bin/python3.10"),
+        jbroot(@"/usr/bin/python3.9"),
+        jbroot(@"/usr/bin/python3.8"),
+        jbroot(@"/bin/python3"),
+        jbroot(@"/bin/python3.7"),
+        @"/var/jb/usr/bin/python3",
+        @"/var/jb/usr/bin/python3.11",
+        @"/var/jb/usr/bin/python3.10",
+        @"/var/jb/usr/bin/python3.9",
+        @"/var/jb/usr/bin/python3.8",
+        @"/var/jb/bin/python3",
+        @"/var/jb/bin/python3.7",
+        @"/usr/bin/python3",
+        @"/usr/bin/python3.11",
+        @"/usr/bin/python3.10",
+        @"/usr/bin/python3.9",
+        @"/usr/bin/python3.8",
+        @"/bin/python3",
+        @"/bin/python3.7"
+    ]);
+}
+
+static NSString *ZXShellPath(void)
+{
+    return ZXFirstExecutablePath(@[
+        jbroot(@"/bin/sh"),
+        jbroot(@"/usr/bin/sh"),
+        @"/var/jb/bin/sh",
+        @"/var/jb/usr/bin/sh",
+        @"/bin/sh",
+        @"/usr/bin/sh"
+    ]) ?: @"/bin/sh";
+}
+
+static NSString *ZXPythonModulePath(void)
+{
+    NSMutableArray<NSString *> *paths = [NSMutableArray array];
+    for (NSString *path in @[
+        jbroot(@"/usr/lib/python3.7/site-packages"),
+        jbroot(@"/usr/lib/python3/site-packages"),
+        jbroot(@"/usr/lib/python3/dist-packages"),
+        @"/var/jb/usr/lib/python3.7/site-packages",
+        @"/var/jb/usr/lib/python3/site-packages",
+        @"/var/jb/usr/lib/python3/dist-packages",
+        @"/usr/lib/python3.7/site-packages",
+        @"/usr/lib/python3/site-packages",
+        @"/usr/lib/python3/dist-packages"
+    ]) {
+        if ([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+            [paths addObject:path];
+        }
+    }
+    return [paths componentsJoinedByString:@":"];
+}
 
 @implementation ScriptPlayer
 {
@@ -256,10 +334,10 @@ static BOOL isPlaying = false;
         bringAppForeground(foregroundApp);
     }
     
-    // check python exists
-    if (![[NSFileManager defaultManager] isExecutableFileAtPath:jbroot(@"/usr/bin/python3")])
+    NSString *pythonPath = ZXPythonPath();
+    if (!pythonPath)
     {
-        showAlertBox(@"Error", @"Cannot play this script. python3 not found. Please install Python 3 on your device.", 999);
+        showAlertBox(@"Error", @"Cannot play this script. python3 was not found. Install Python 3 from Procursus or reinstall ZXTouch so the bundled runtime is restored.", 999);
         isPlaying = false;
         return;
     }
@@ -276,13 +354,36 @@ static BOOL isPlaying = false;
         [@"" writeToFile:outputLog atomically:YES encoding:NSUTF8StringEncoding error:nil];
 
     NSString *dateWrapper = @"/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh";
-    if (![[NSFileManager defaultManager] fileExistsAtPath:dateWrapper])
-        [@"#!/var/jb/bin/sh\nOUTPUT=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output\nDATE=/var/jb/usr/bin/date\nif [ ! -x \"$DATE\" ]; then DATE=/usr/bin/date; fi\necho \"$($DATE '+%m-%d-%Y %T'): Start running script. Script path: $1\" >> \"$OUTPUT\"\nwhile IFS= read -r line; do\n    echo \"$($DATE '+%m-%d-%Y %T'): $line\" >> \"$OUTPUT\"\ndone\n" writeToFile:dateWrapper atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    NSString *shellPath = ZXShellPath();
+    if (![[NSFileManager defaultManager] fileExistsAtPath:dateWrapper]) {
+        NSString *wrapper = [NSString stringWithFormat:@"#!%@\nOUTPUT=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output\nDATE=/var/jb/usr/bin/date\nif [ ! -x \"$DATE\" ]; then DATE=/usr/bin/date; fi\nif [ ! -x \"$DATE\" ]; then DATE=/bin/date; fi\necho \"$($DATE '+%%m-%%d-%%Y %%T'): Start running script. Script path: $1\" >> \"$OUTPUT\"\nwhile IFS= read -r line; do\n    echo \"$($DATE '+%%m-%%d-%%Y %%T'): $line\" >> \"$OUTPUT\"\ndone\n", shellPath];
+        [wrapper writeToFile:dateWrapper atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        chmod(dateWrapper.UTF8String, 0755);
+    }
 
-    NSString *commandToRun = [NSString stringWithFormat:@"%@ -u \"%@\" 2>&1 | %@ \"%@\" \"%@\"", jbroot(@"/usr/bin/python3"), filePath, jbroot(@"/bin/sh"), dateWrapper, filePath];
+    NSString *scriptDir = [filePath stringByDeletingLastPathComponent];
+    NSString *statusFile = @"/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/last_python_status";
+    NSString *pythonModulePath = ZXPythonModulePath();
+    NSString *envPrefix = pythonModulePath.length > 0 ? [NSString stringWithFormat:@"PYTHONPATH=%@ ", ZXShellQuote(pythonModulePath)] : @"";
+    NSString *commandToRun = [NSString stringWithFormat:@"rm -f %@; (cd %@ && %@%@ -u %@ 2>&1; echo $? > %@) | %@ %@ %@; exit $(cat %@ 2>/dev/null || echo 1)",
+                              ZXShellQuote(statusFile),
+                              ZXShellQuote(scriptDir),
+                              envPrefix,
+                              ZXShellQuote(pythonPath),
+                              ZXShellQuote(filePath),
+                              ZXShellQuote(statusFile),
+                              ZXShellQuote(shellPath),
+                              ZXShellQuote(dateWrapper),
+                              ZXShellQuote(filePath),
+                              ZXShellQuote(statusFile)];
     NSLog(@"com.zjx.springboard: command to run for running py file %@", commandToRun);
 
-    system2([commandToRun UTF8String], NULL, NULL);
+    int exitCode = system2([commandToRun UTF8String], NULL, NULL);
+    if (exitCode != 0) {
+        NSString *message = [NSString stringWithFormat:@"Python script exited with code %d. Open Logs for the traceback.", exitCode];
+        NSLog(@"com.zjx.springboard: %@", message);
+        showAlertBox(@"Script Error", message, 999);
+    }
     // add force stop
     [self playHasStopped];
 }

@@ -19,6 +19,7 @@ mkdir -p /var/mobile/Library/ZXTouch/scripts/recording/
 mkdir -p /var/mobile/Library/ZXTouch/scripts/examples/
 mkdir -p /var/mobile/Library/ZXTouch/config/tweak/
 mkdir -p /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/
+mkdir -p /var/jb/usr/bin /var/jb/bin
 
 # Copy bundled example scripts. These are maintained by the package, so refresh
 # them on upgrade while leaving unrelated user scripts alone.
@@ -33,26 +34,33 @@ if [ -f /var/jb/usr/share/zxtouch/script-registry.plist ]; then
 fi
 
 ADD_DATETIME=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/add_datetime.sh
-if [ ! -f "$ADD_DATETIME" ]; then
-    cat > "$ADD_DATETIME" << 'EOF'
+cat > "$ADD_DATETIME" << 'EOF'
 #!/var/jb/bin/sh
 OUTPUT=/var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output
 DATE=/var/jb/usr/bin/date
 if [ ! -x "$DATE" ]; then DATE=/usr/bin/date; fi
+if [ ! -x "$DATE" ]; then DATE=/bin/date; fi
 echo "$($DATE '+%m-%d-%Y %T'): Start running script. Script path: $1" >> "$OUTPUT"
 while IFS= read -r line; do
     echo "$($DATE '+%m-%d-%Y %T'): $line" >> "$OUTPUT"
 done
 EOF
-fi
 chmod 755 "$ADD_DATETIME"
 touch /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output
 
 chown -R mobile:mobile /var/mobile/Library/ZXTouch
 
-# Point python3 to the highest working version (3.7 is broken on iOS 16)
-for VER in python3.11 python3.10 python3.9 python3.8; do
-    PYBIN=/var/jb/usr/bin/$VER
+# Point python3 to the highest working version. Prefer Procursus Python, but
+# fall back to the bundled Python so Filza installs still have a runtime.
+for PYBIN in \
+    /var/jb/usr/bin/python3.11 \
+    /var/jb/usr/bin/python3.10 \
+    /var/jb/usr/bin/python3.9 \
+    /var/jb/usr/bin/python3.8 \
+    /var/jb/bin/python3.7 \
+    /var/jb/bin/python3 \
+    /usr/bin/python3 \
+    /bin/python3; do
     if [ -x "$PYBIN" ]; then
         ln -sf "$PYBIN" /var/jb/usr/bin/python3
         ln -sf "$PYBIN" /var/jb/bin/python3

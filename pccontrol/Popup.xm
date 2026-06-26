@@ -13,6 +13,7 @@
 #define SETTINGS_KEY_REPEAT  @"repeat_times"
 #define SETTINGS_KEY_SPEED   @"speed"
 #define SETTINGS_KEY_INTERVAL @"interval"
+#define SETTINGS_KEY_ENABLED @"settings_enabled"
 
 static UIButton* makeBtn(NSString *title, UIColor *color) {
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -112,9 +113,8 @@ static void styleIconButton(UIButton *button, NSString *symbolName, UIColor *col
         styleIconButton(_gearBtn, @"slider.horizontal.3", [UIColor systemBlueColor]);
         [_gearBtn addAction:[UIAction actionWithTitle:@"" image:nil identifier:nil handler:^(__kindof UIAction *a) {
             _settingsVisible = !_settingsVisible;
-            _gearBtn.backgroundColor = _settingsVisible ?
-                [UIColor colorWithRed:0.2 green:0.6 blue:1.0 alpha:0.25] :
-                [UIColor secondarySystemBackgroundColor];
+            [self updateSettingsButtonAppearance];
+            [self saveSettings:_repeatCount speed:_speed interval:_interval enabled:_settingsVisible];
         }] forControlEvents:UIControlEventTouchUpInside];
         [cv addSubview:_gearBtn];
 
@@ -178,6 +178,13 @@ static void styleIconButton(UIButton *button, NSString *symbolName, UIColor *col
     UIView *s = [[UIView alloc] initWithFrame:r];
     s.backgroundColor = [UIColor separatorColor];
     return s;
+}
+
+- (void) updateSettingsButtonAppearance {
+    if (!_gearBtn) return;
+    _gearBtn.backgroundColor = _settingsVisible ?
+        [UIColor colorWithRed:0.2 green:0.6 blue:1.0 alpha:0.25] :
+        [UIColor secondarySystemBackgroundColor];
 }
 
 void applyPanelDarkMode(BOOL dark) {
@@ -291,10 +298,10 @@ void applyPanelDarkMode(BOOL dark) {
                 } else {
                     // Direct play
                     [self hide];
-                    [self saveSettings:_repeatCount speed:_speed interval:_interval];
+                    [self saveSettings:_repeatCount speed:_speed interval:_interval enabled:NO];
                     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                         NSError *err = nil;
-                        playScriptWithSettings((UInt8*)[fullPath UTF8String], _repeatCount, _speed, _interval, &err);
+                        playScriptWithSettings((UInt8*)[fullPath UTF8String], 0, 1.0f, 0.0f, &err);
                         if (err) showAlertBox(@"Error", [err localizedDescription], 999);
                     });
                 }
@@ -308,11 +315,18 @@ void applyPanelDarkMode(BOOL dark) {
 }
 
 - (void) saveSettings:(int)repeat speed:(float)speed interval:(float)interval {
+    [self saveSettings:repeat speed:speed interval:interval enabled:_settingsVisible];
+}
+
+- (void) saveSettings:(int)repeat speed:(float)speed interval:(float)interval enabled:(BOOL)enabled {
     NSMutableDictionary *config = [NSMutableDictionary dictionary];
+    NSDictionary *existing = [[NSDictionary alloc] initWithContentsOfFile:SCRIPT_PLAY_CONFIG_PATH];
+    if (existing) [config addEntriesFromDictionary:existing];
     config[@"panelPlaybackInfo"] = @{
         SETTINGS_KEY_REPEAT: @(repeat),
         SETTINGS_KEY_SPEED: @(speed),
-        SETTINGS_KEY_INTERVAL: @(interval)
+        SETTINGS_KEY_INTERVAL: @(interval),
+        SETTINGS_KEY_ENABLED: @(enabled)
     };
     [config writeToFile:SCRIPT_PLAY_CONFIG_PATH atomically:YES];
 }
@@ -388,7 +402,11 @@ void applyPanelDarkMode(BOOL dark) {
             float sp = [panelInfo[@"speed"] floatValue];
             _speed = sp > 0 ? sp : 1.0f;
             _interval = [panelInfo[@"interval"] floatValue];
+            _settingsVisible = [panelInfo[SETTINGS_KEY_ENABLED] boolValue];
+        } else {
+            _settingsVisible = NO;
         }
+        [self updateSettingsButtonAppearance];
         NSDictionary *tweakCfg = nil;
         NSString *configFilePath = [NSString stringWithFormat:@"/var/mobile/Library/ZXTouch/config/tweak/config.plist"];
         if ([[NSFileManager defaultManager] fileExistsAtPath:configFilePath])
@@ -402,10 +420,6 @@ void applyPanelDarkMode(BOOL dark) {
 
 - (void) hide {
     dispatch_async(dispatch_get_main_queue(), ^{
-        _settingsVisible = NO;
-        if (_gearBtn) {
-            _gearBtn.backgroundColor = [UIColor secondarySystemBackgroundColor];
-        }
         _window.hidden = YES;
     });
     isShown = NO;

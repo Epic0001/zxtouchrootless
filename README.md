@@ -1,10 +1,10 @@
 # ZXTouch Rootless
 
-**iOS 16 Rootless (Dopamine) + Roothide port by [Epic0001](https://github.com/Epic0001/zxtouchrootless)**
+**iOS 15–16 Rootless (Dopamine / NathanLR) + Roothide port by [Epic0001](https://github.com/Epic0001/zxtouchrootless)**
 
 A **system wide** touch event simulation library for iOS. Simulate touches, run scripts, and automate your device — system level, no app injection required.
 
-> Forked from [IOS13-SimulateTouch](https://github.com/xuan32546/IOS13-SimulateTouch) by xuan32546. This fork adds full **iOS 15–16 rootless (Dopamine) and roothide (Serotonin)** support.
+> Forked from [IOS13-SimulateTouch](https://github.com/xuan32546/IOS13-SimulateTouch) by xuan32546. This fork adds full **iOS 15–16 rootless (Dopamine, NathanLR) and roothide (Serotonin)** support.
 
 Discord: https://discord.gg/acSXfyz
 
@@ -44,6 +44,7 @@ The built-in automation system currently supports assigning actions to Volume Up
 | Jailbreak | iOS Version | Status |
 |-----------|-------------|--------|
 | Dopamine (rootless) | 16.4.1, 16.6.1 | ✅ Working |
+| NathanLR (rootless, semi-untethered) | 16.5.1 – 16.6.1 | ✅ Working (install `_rootless.deb`) |
 | Roothide / Serotonin | 15.8, 16.6.1 | ✅ Working |
 
 ---
@@ -57,7 +58,7 @@ The built-in automation system currently supports assigning actions to Volume Up
 - **Rebuilt panel UI** — floating script panel with ⚙️ settings popup (repeat / speed / interval), dark mode, orientation-aware layout
 - **Dark mode** — toggle in the app for both the app UI and the panel
 - **Touch indicator coordinates toggle** — show or hide (x, y) labels per finger
-- **Python scripts fully working** - auto-detects Python 3.8-3.11, fixes broken symlinks, uses bundled fallback paths, copies module to correct site-packages, and reports real tracebacks in logs
+- **Python scripts fully working** - auto-detects Procursus Python 3.8–3.12, prefers versioned interpreters over the generic `python3` symlink (routes around broken installs), copies the `zxtouch` module to every installed Python's site-packages, and reports real tracebacks in logs
 - **Color picker & color searcher re-enabled** — reimplemented in pure CoreGraphics
 - **OCR** working via Vision framework
 - **Volume-down stop** working for Python scripts
@@ -77,12 +78,17 @@ The built-in automation system currently supports assigning actions to Volume Up
 ### Dopamine (rootless)
 - iOS 15.0 – 16.6.1
 - [Dopamine](https://ellekit.space/dopamine/) jailbreak
-- Python 3 from Procursus repo is recommended for `.py` scripts. ZXTouch also falls back to the bundled runtime when available.
+- **Python 3 (Procursus) is required** for `.py` scripts. Install via Sileo → search `python3`. ZXTouch no longer ships a bundled runtime — the old bundled `python3.7` aborted at dyld load on rootless because its libpython dylib pointed at a `/usr/lib` path that doesn't exist there.
+
+### NathanLR (rootless, iOS 16.5.1 – 16.6.1)
+- Semi-untethered — reopen the [NathanLR](https://www.nathanlr.com/) app after each reboot to reactivate tweaks
+- Install the `_rootless.deb` (NathanLR uses the rootless bootstrap under `/var/jb`, not roothide)
+- **Python 3 (Procursus) is required** — same as Dopamine
 
 ### Roothide / Serotonin
 - iOS 15.0 – 16.6.1
 - [Serotonin](https://github.com/roothide/Serotonin) or roothide-compatible jailbreak
-- Python 3 from Procursus repo is recommended for `.py` scripts. ZXTouch also falls back to the bundled runtime when available.
+- **Python 3 (Procursus) is required** for `.py` scripts. Install via Sileo → search `python3`.
 
 ---
 

@@ -30,28 +30,30 @@ static NSString *ZXFirstExecutablePath(NSArray<NSString *> *candidates)
 
 static NSString *ZXPythonPath(void)
 {
+    // Prefer specific versions before the generic `python3` symlink. If a
+    // previous install of ZXTouch (or another package) pointed `python3` at a
+    // broken interpreter (e.g. Procursus 3.7 whose libpython lives at a path
+    // dyld can't resolve on rootless), a versioned binary is more likely to
+    // actually load. 3.7 is dropped entirely — it aborts at dyld on 15+.
     return ZXFirstExecutablePath(@[
-        jbroot(@"/usr/bin/python3"),
+        jbroot(@"/usr/bin/python3.12"),
         jbroot(@"/usr/bin/python3.11"),
         jbroot(@"/usr/bin/python3.10"),
         jbroot(@"/usr/bin/python3.9"),
         jbroot(@"/usr/bin/python3.8"),
-        jbroot(@"/bin/python3"),
-        jbroot(@"/bin/python3.7"),
-        @"/var/jb/usr/bin/python3",
+        jbroot(@"/usr/bin/python3"),
+        @"/var/jb/usr/bin/python3.12",
         @"/var/jb/usr/bin/python3.11",
         @"/var/jb/usr/bin/python3.10",
         @"/var/jb/usr/bin/python3.9",
         @"/var/jb/usr/bin/python3.8",
-        @"/var/jb/bin/python3",
-        @"/var/jb/bin/python3.7",
-        @"/usr/bin/python3",
+        @"/var/jb/usr/bin/python3",
+        @"/usr/bin/python3.12",
         @"/usr/bin/python3.11",
         @"/usr/bin/python3.10",
         @"/usr/bin/python3.9",
         @"/usr/bin/python3.8",
-        @"/bin/python3",
-        @"/bin/python3.7"
+        @"/usr/bin/python3"
     ]);
 }
 
@@ -69,15 +71,18 @@ static NSString *ZXShellPath(void)
 
 static NSString *ZXPythonModulePath(void)
 {
+    // The zxtouch module ships under /usr/share/zxtouch/python and the postinst
+    // also copies it into every installed Python's site/dist-packages. Include
+    // the share path unconditionally so scripts still find `import zxtouch`
+    // even if the copy step skipped a Python version installed later.
     NSMutableArray<NSString *> *paths = [NSMutableArray array];
     for (NSString *path in @[
-        jbroot(@"/usr/lib/python3.7/site-packages"),
+        jbroot(@"/usr/share/zxtouch/python"),
         jbroot(@"/usr/lib/python3/site-packages"),
         jbroot(@"/usr/lib/python3/dist-packages"),
-        @"/var/jb/usr/lib/python3.7/site-packages",
+        @"/var/jb/usr/share/zxtouch/python",
         @"/var/jb/usr/lib/python3/site-packages",
         @"/var/jb/usr/lib/python3/dist-packages",
-        @"/usr/lib/python3.7/site-packages",
         @"/usr/lib/python3/site-packages",
         @"/usr/lib/python3/dist-packages"
     ]) {
@@ -337,7 +342,9 @@ static NSString *ZXPythonModulePath(void)
     NSString *pythonPath = ZXPythonPath();
     if (!pythonPath)
     {
-        showAlertBox(@"Error", @"Cannot play this script. python3 was not found. Install Python 3 from Procursus or reinstall ZXTouch so the bundled runtime is restored.", 999);
+        showAlertBox(@"Python not installed",
+                     @"ZXTouch could not find a working python3 on this device.\n\nOpen Sileo and install the 'python3' package from Procursus, then reinstall ZXTouch so it can register the new interpreter.",
+                     999);
         isPlaying = false;
         return;
     }
@@ -382,9 +389,28 @@ static NSString *ZXPythonModulePath(void)
     NSString *statusText = [NSString stringWithContentsOfFile:statusFile encoding:NSUTF8StringEncoding error:nil];
     int pythonExitCode = statusText ? [statusText intValue] : shellExitCode;
     if (pythonExitCode != 0) {
-        NSString *message = [NSString stringWithFormat:@"Python script exited with code %d. Open Logs for the traceback.", pythonExitCode];
-        NSLog(@"com.zjx.springboard: %@", message);
-        showAlertBox(@"Script Error", message, 999);
+        NSString *title = @"Script Error";
+        NSString *message;
+        NSString *logTail = [NSString stringWithContentsOfFile:outputLog encoding:NSUTF8StringEncoding error:nil] ?: @"";
+        BOOL dyldLibpythonMissing = [logTail rangeOfString:@"Library not loaded" options:0].location != NSNotFound &&
+                                    [logTail rangeOfString:@"libpython" options:0].location != NSNotFound;
+        if (statusText == nil && shellExitCode < 0) {
+            // system2 failed before python could run — spawn was denied or the
+            // shell was unusable. Common on semi-jailbreaks with stripped
+            // entitlements. Check Console.app for `system2` NSLog output.
+            title = @"Script could not launch";
+            message = @"ZXTouch could not start a shell to run the script (posix_spawn failed).\n\nOpen Console.app (or `oslog`) and search for `com.zjx.springboard: system2` to see the exact error.";
+        } else if (pythonExitCode == 134 && dyldLibpythonMissing) {
+            // 134 = SIGABRT. Dyld couldn't find libpython — the interpreter
+            // was linked against a path that doesn't exist on this JB (classic
+            // Procursus python3.7 on rootless).
+            title = @"Python interpreter is broken";
+            message = @"The installed python3 aborted at launch because dyld cannot find its libpython dylib.\n\nInstall the 'python3' package (3.9 or newer) from Sileo (Procursus), then reinstall ZXTouch so it re-picks the working interpreter.";
+        } else {
+            message = [NSString stringWithFormat:@"Python script exited with code %d. Open Logs for the traceback.", pythonExitCode];
+        }
+        NSLog(@"com.zjx.springboard: %@ — %@", title, message);
+        showAlertBox(title, message, 999);
     }
     // add force stop
     [self playHasStopped];

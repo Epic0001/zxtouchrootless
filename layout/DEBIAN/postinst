@@ -50,32 +50,40 @@ touch /var/mobile/Library/ZXTouch/coreutils/ScriptRuntime/output
 
 chown -R mobile:mobile /var/mobile/Library/ZXTouch
 
-# Point python3 to the highest working version. Prefer Procursus Python, but
-# fall back to the bundled Python so Filza installs still have a runtime.
+# Point /var/jb/usr/bin/python3 at the newest working Procursus Python we can
+# find. We no longer ship a bundled Python 3.7 runtime — its libpython dylib
+# lives under /usr/lib on stock iOS which doesn't exist on rootless, so it aborts
+# at dyld load. Users must install python3 from Sileo (Procursus).
+FOUND_PY=""
 for PYBIN in \
+    /var/jb/usr/bin/python3.12 \
     /var/jb/usr/bin/python3.11 \
     /var/jb/usr/bin/python3.10 \
     /var/jb/usr/bin/python3.9 \
     /var/jb/usr/bin/python3.8 \
-    /var/jb/bin/python3.7 \
-    /var/jb/bin/python3 \
     /usr/bin/python3 \
     /bin/python3; do
     if [ -x "$PYBIN" ]; then
         ln -sf "$PYBIN" /var/jb/usr/bin/python3
         ln -sf "$PYBIN" /var/jb/bin/python3
+        FOUND_PY="$PYBIN"
         break
     fi
 done
+if [ -z "$FOUND_PY" ]; then
+    echo "ZXTouch: warning — no working python3 found. Install one from Sileo (Procursus 'python3' package) before running .py scripts." >&2
+fi
 
-# Install zxtouch Python module into all known package locations
-SRC=/var/jb/usr/lib/python3.7/site-packages/zxtouch
-for SP in /var/jb/usr/lib/python3*/site-packages /var/jb/usr/lib/python3*/dist-packages /var/jb/usr/lib/python3/dist-packages; do
-    if [ -d "$SP" ] && [ "$SP" != "/var/jb/usr/lib/python3.7/site-packages" ]; then
-        rm -rf "$SP/zxtouch"
-        cp -R "$SRC" "$SP/" 2>/dev/null || true
-    fi
-done
+# Install zxtouch Python module into every installed Python's site/dist-packages
+SRC=/var/jb/usr/share/zxtouch/python/zxtouch
+if [ -d "$SRC" ]; then
+    for SP in /var/jb/usr/lib/python3*/site-packages /var/jb/usr/lib/python3*/dist-packages /var/jb/usr/lib/python3/dist-packages; do
+        if [ -d "$SP" ]; then
+            rm -rf "$SP/zxtouch"
+            cp -R "$SRC" "$SP/" 2>/dev/null || true
+        fi
+    done
+fi
 
 # Strip expired dev provisioning profile and re-sign with ldid
 APP=/var/jb/Applications/zxtouch.app

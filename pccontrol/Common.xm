@@ -3,6 +3,9 @@
 #import <sys/utsname.h>
 #import <sys/wait.h>
 #include <dlfcn.h>
+#include <spawn.h>
+#include <errno.h>
+#include <string.h>
 
 int call_system(const char *cmd)
 {
@@ -127,48 +130,97 @@ void swapCGFloat(CGFloat *a, CGFloat *b)
 	*b = temp;
 }
 
+// Spawn `/bin/sh -c command` via posix_spawn. Raw fork() is blocked by the
+// sandbox in a SpringBoard-injected tweak on some jailbreaks (palera1n-rootless,
+// certain roothide setups), which surfaces to users as "Python script exited
+// with code -1" with an empty log. posix_spawn is the supported path.
 pid_t system2(const char * command, int * infp, int * outfp)
 {
-    int p_stdin[2];
-    int p_stdout[2];
-    pid_t pid;
+    int p_stdin[2] = {-1, -1};
+    int p_stdout[2] = {-1, -1};
 
-    if (pipe(p_stdin) == -1)
+    if (pipe(p_stdin) == -1) {
+        NSLog(@"com.zjx.springboard: system2 pipe(stdin) failed: %s", strerror(errno));
         return -1;
+    }
 
     if (pipe(p_stdout) == -1) {
+        NSLog(@"com.zjx.springboard: system2 pipe(stdout) failed: %s", strerror(errno));
         close(p_stdin[0]);
         close(p_stdin[1]);
         return -1;
     }
 
-    pid = fork();
-
-    if (pid < 0) {
-        close(p_stdin[0]);
-        close(p_stdin[1]);
-        close(p_stdout[0]);
-        close(p_stdout[1]);
-        return pid;
-    } else if (pid == 0) {
-        close(p_stdin[1]);
-        dup2(p_stdin[0], 0);
-        close(p_stdout[0]);
-        if (outfp == NULL) {
-            int devnull = ::open("/dev/null", O_WRONLY);
-            dup2(devnull, 1);
-            dup2(devnull, 2);
-        } else {
-            dup2(p_stdout[1], 1);
-            dup2(p_stdout[1], 2);
+    const char *shellPath = jbroot("/bin/sh");
+    if (!shellPath || access(shellPath, X_OK) != 0) {
+        // jbroot() returned something unusable; try known rootless fallbacks.
+        static const char *candidates[] = {
+            "/var/jb/bin/sh",
+            "/var/jb/usr/bin/sh",
+            "/bin/sh",
+            "/usr/bin/sh",
+            NULL
+        };
+        shellPath = NULL;
+        for (int i = 0; candidates[i]; ++i) {
+            if (access(candidates[i], X_OK) == 0) { shellPath = candidates[i]; break; }
         }
-        /// Close all other descriptors for the safety sake.
-        for (int i = 3; i < 4096; ++i)
-            ::close(i);
+        if (!shellPath) {
+            NSLog(@"com.zjx.springboard: system2 could not locate a usable /bin/sh");
+            close(p_stdin[0]); close(p_stdin[1]);
+            close(p_stdout[0]); close(p_stdout[1]);
+            return -1;
+        }
+    }
 
-        setsid();
-        execl(jbroot("/bin/sh"), "sh", "-c", command, NULL);
-        _exit(1);
+    posix_spawn_file_actions_t actions;
+    posix_spawn_file_actions_init(&actions);
+
+    // stdin: child reads from p_stdin[0]
+    posix_spawn_file_actions_adddup2(&actions, p_stdin[0], STDIN_FILENO);
+    posix_spawn_file_actions_addclose(&actions, p_stdin[0]);
+    posix_spawn_file_actions_addclose(&actions, p_stdin[1]);
+
+    if (outfp == NULL) {
+        posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0);
+        posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY, 0);
+        posix_spawn_file_actions_addclose(&actions, p_stdout[0]);
+        posix_spawn_file_actions_addclose(&actions, p_stdout[1]);
+    } else {
+        posix_spawn_file_actions_adddup2(&actions, p_stdout[1], STDOUT_FILENO);
+        posix_spawn_file_actions_adddup2(&actions, p_stdout[1], STDERR_FILENO);
+        posix_spawn_file_actions_addclose(&actions, p_stdout[0]);
+        posix_spawn_file_actions_addclose(&actions, p_stdout[1]);
+    }
+
+    posix_spawnattr_t attrs;
+    posix_spawnattr_init(&attrs);
+    // Reset signal handlers and clear any inherited signal mask so the shell
+    // doesn't inherit SpringBoard's oddities.
+    sigset_t emptyset;
+    sigemptyset(&emptyset);
+    posix_spawnattr_setsigmask(&attrs, &emptyset);
+    posix_spawnattr_setflags(&attrs, POSIX_SPAWN_SETSIGMASK);
+
+    char * const argv[] = {
+        (char *)"sh",
+        (char *)"-c",
+        (char *)command,
+        NULL
+    };
+    extern char **environ;
+
+    pid_t pid = 0;
+    int spawnErr = posix_spawn(&pid, shellPath, &actions, &attrs, argv, environ);
+    posix_spawn_file_actions_destroy(&actions);
+    posix_spawnattr_destroy(&attrs);
+
+    if (spawnErr != 0) {
+        NSLog(@"com.zjx.springboard: system2 posix_spawn(%s) failed: %s (%d)",
+              shellPath, strerror(spawnErr), spawnErr);
+        close(p_stdin[0]); close(p_stdin[1]);
+        close(p_stdout[0]); close(p_stdout[1]);
+        return -1;
     }
 
     close(p_stdin[0]);
@@ -187,11 +239,11 @@ pid_t system2(const char * command, int * infp, int * outfp)
     }
 
     int status = 0;
-	if (pid > 0)
-	{
-		waitpid(pid, &status, 0);
-	}
+    if (waitpid(pid, &status, 0) == -1) {
+        NSLog(@"com.zjx.springboard: system2 waitpid failed: %s", strerror(errno));
+        return -1;
+    }
     if (WIFEXITED(status)) return WEXITSTATUS(status);
     if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
-    return pid;
+    return -1;
 }

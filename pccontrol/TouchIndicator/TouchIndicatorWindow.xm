@@ -54,11 +54,15 @@ static BOOL logNextWindowGeometry = NO;
 
 static BOOL orientationMaskSupports(UIInterfaceOrientationMask mask, UIInterfaceOrientation orientation)
 {
-    if (orientation < UIInterfaceOrientationPortrait ||
-        orientation > UIInterfaceOrientationLandscapeRight) {
-        return NO;
+    switch (orientation) {
+        case UIInterfaceOrientationPortrait:
+        case UIInterfaceOrientationPortraitUpsideDown:
+        case UIInterfaceOrientationLandscapeLeft:
+        case UIInterfaceOrientationLandscapeRight:
+            return (mask & (1UL << orientation)) != 0;
+        default:
+            return NO;
     }
-    return (mask & (1UL << orientation)) != 0;
 }
 
 static UIInterfaceOrientation firstOrientationInMask(UIInterfaceOrientationMask mask)

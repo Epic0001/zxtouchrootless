@@ -32,7 +32,10 @@ static UIInterfaceOrientation cachedOrientation = UIInterfaceOrientationPortrait
 static UIInterfaceOrientation cachedInputOrientation = UIInterfaceOrientationPortrait;
 static BOOL cachedMirrorInputX = NO;
 static BOOL indicatorLocksToPortrait = NO;
+static UIInterfaceOrientationMask indicatorOrientationMask = UIInterfaceOrientationMaskAll;
 static BOOL indicatorWindowNeedsRebuild = NO;
+static NSString *cachedPolicyBundleIdentifier = nil;
+static UIInterfaceOrientationMask cachedPolicyOrientationMask = UIInterfaceOrientationMaskAll;
 
 static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHIDServiceRef service, IOHIDEventRef parentEvent);
 
@@ -49,21 +52,43 @@ static TouchIndicatorWindow *touchIndicatorWindow;
 static BOOL logNextIndicatorOrientation = NO;
 static BOOL logNextWindowGeometry = NO;
 
+static BOOL orientationMaskSupports(UIInterfaceOrientationMask mask, UIInterfaceOrientation orientation)
+{
+    if (orientation < UIInterfaceOrientationPortrait ||
+        orientation > UIInterfaceOrientationLandscapeRight) {
+        return NO;
+    }
+    return (mask & (1UL << orientation)) != 0;
+}
+
+static UIInterfaceOrientation firstOrientationInMask(UIInterfaceOrientationMask mask)
+{
+    if (mask & UIInterfaceOrientationMaskPortrait) return UIInterfaceOrientationPortrait;
+    if (mask & UIInterfaceOrientationMaskLandscapeLeft) return UIInterfaceOrientationLandscapeLeft;
+    if (mask & UIInterfaceOrientationMaskLandscapeRight) return UIInterfaceOrientationLandscapeRight;
+    if (mask & UIInterfaceOrientationMaskPortraitUpsideDown) return UIInterfaceOrientationPortraitUpsideDown;
+    return UIInterfaceOrientationPortrait;
+}
+
 @interface ZXTouchIndicatorRootViewController : UIViewController
 @end
 
 @implementation ZXTouchIndicatorRootViewController
 
 - (BOOL)shouldAutorotate {
-    return !indicatorLocksToPortrait;
+    NSUInteger mask = indicatorOrientationMask;
+    return mask != 0 && (mask & (mask - 1)) != 0;
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
-    return indicatorLocksToPortrait ? UIInterfaceOrientationMaskPortrait : UIInterfaceOrientationMaskAll;
+    return indicatorOrientationMask ?: UIInterfaceOrientationMaskAll;
 }
 
 - (UIInterfaceOrientation)preferredInterfaceOrientationForPresentation {
-    return UIInterfaceOrientationPortrait;
+    if (orientationMaskSupports(indicatorOrientationMask, cachedOrientation)) {
+        return cachedOrientation;
+    }
+    return firstOrientationInMask(indicatorOrientationMask);
 }
 
 @end
@@ -164,20 +189,38 @@ static NSDictionary *frontMostAppInfoDictionary(NSString *bundleIdentifier)
     return info;
 }
 
-static BOOL frontMostAppSupportsLandscape(NSString *bundleIdentifier)
+static UIInterfaceOrientationMask frontMostAppOrientationMask(NSString *bundleIdentifier)
 {
+    if (!bundleIdentifier || [bundleIdentifier isEqualToString:@"com.apple.springboard"]) {
+        return UIInterfaceOrientationMaskAll;
+    }
+    if ([cachedPolicyBundleIdentifier isEqualToString:bundleIdentifier]) {
+        return cachedPolicyOrientationMask;
+    }
+
     NSDictionary *info = frontMostAppInfoDictionary(bundleIdentifier);
     NSArray *orientations = info[@"UISupportedInterfaceOrientations"];
     NSArray *ipadOrientations = info[@"UISupportedInterfaceOrientations~ipad"];
     if (ipadOrientations.count > 0) orientations = ipadOrientations;
-    if (orientations.count == 0) return YES;
+    UIInterfaceOrientationMask mask = 0;
 
     for (NSString *orientation in orientations) {
-        if ([orientation containsString:@"Landscape"]) {
-            return YES;
+        if (![orientation isKindOfClass:[NSString class]]) continue;
+        if ([orientation isEqualToString:@"UIInterfaceOrientationPortrait"]) {
+            mask |= UIInterfaceOrientationMaskPortrait;
+        } else if ([orientation isEqualToString:@"UIInterfaceOrientationPortraitUpsideDown"]) {
+            mask |= UIInterfaceOrientationMaskPortraitUpsideDown;
+        } else if ([orientation isEqualToString:@"UIInterfaceOrientationLandscapeLeft"]) {
+            mask |= UIInterfaceOrientationMaskLandscapeLeft;
+        } else if ([orientation isEqualToString:@"UIInterfaceOrientationLandscapeRight"]) {
+            mask |= UIInterfaceOrientationMaskLandscapeRight;
         }
     }
-    return NO;
+    if (mask == 0) mask = UIInterfaceOrientationMaskAll;
+
+    cachedPolicyBundleIdentifier = [bundleIdentifier copy];
+    cachedPolicyOrientationMask = mask;
+    return mask;
 }
 
 static BOOL isValidInterfaceOrientation(int orientation)
@@ -191,7 +234,7 @@ static BOOL isValidInterfaceOrientation(int orientation)
 static UIInterfaceOrientation currentIndicatorOrientation(void)
 {
     NSString *bundleIdentifier = frontMostAppBundleIdentifier();
-    BOOL supportsLandscape = frontMostAppSupportsLandscape(bundleIdentifier);
+    UIInterfaceOrientationMask supportedMask = frontMostAppOrientationMask(bundleIdentifier);
     int frontOrientation = [Screen getScreenOrientation];
     UIInterfaceOrientation selectedOrientation = UIInterfaceOrientationPortrait;
     UIDeviceOrientation deviceOrientation = [[UIDevice currentDevice] orientation];
@@ -201,23 +244,32 @@ static UIInterfaceOrientation currentIndicatorOrientation(void)
         // SpringBoard can report the outgoing app's orientation briefly after a
         // swipe Home. The physical orientation is the authoritative source here.
         selectedOrientation = (UIInterfaceOrientation)deviceOrientation;
-    } else if (supportsLandscape && isValidInterfaceOrientation(frontOrientation)) {
+    } else if (isValidInterfaceOrientation(frontOrientation) &&
+               orientationMaskSupports(supportedMask, (UIInterfaceOrientation)frontOrientation)) {
         selectedOrientation = (UIInterfaceOrientation)frontOrientation;
+    } else if (orientationMaskSupports(supportedMask, cachedOrientation)) {
+        // SpringBoard sometimes reports the physical device orientation for a
+        // locked app. Keep the last valid app orientation instead of following it.
+        selectedOrientation = cachedOrientation;
+    } else if (isValidInterfaceOrientation(deviceOrientation) &&
+               orientationMaskSupports(supportedMask, (UIInterfaceOrientation)deviceOrientation)) {
+        selectedOrientation = (UIInterfaceOrientation)deviceOrientation;
+    } else {
+        selectedOrientation = firstOrientationInMask(supportedMask);
     }
 
-    BOOL shouldLockToPortrait = !supportsLandscape;
+    indicatorOrientationMask = supportedMask;
+    BOOL shouldLockToPortrait = supportedMask == UIInterfaceOrientationMaskPortrait;
     if (indicatorLocksToPortrait != shouldLockToPortrait) {
         indicatorLocksToPortrait = shouldLockToPortrait;
-        appendTouchIndicatorDebugLog([NSString stringWithFormat:@"rotationPolicy portraitLock=%d bundle=%@\n",
-                                      indicatorLocksToPortrait, bundleIdentifier ?: @"unknown"]);
     }
 
     cachedInputOrientation = selectedOrientation;
     cachedMirrorInputX = NO;
 
     if (logNextIndicatorOrientation) {
-        NSString *message = [NSString stringWithFormat:@"bundle=%@ supportsLandscape=%d frontOrientation=%d selectedOrientation=%ld inputOrientation=%ld deviceOrientation=%ld mirrorX=%d\n",
-                             bundleIdentifier ?: @"unknown", supportsLandscape, frontOrientation, (long)selectedOrientation, (long)cachedInputOrientation, (long)deviceOrientation, cachedMirrorInputX];
+        NSString *message = [NSString stringWithFormat:@"bundle=%@ supportedMask=%lu frontOrientation=%d selectedOrientation=%ld inputOrientation=%ld deviceOrientation=%ld mirrorX=%d\n",
+                             bundleIdentifier ?: @"unknown", (unsigned long)supportedMask, frontOrientation, (long)selectedOrientation, (long)cachedInputOrientation, (long)deviceOrientation, cachedMirrorInputX];
         NSLog(@"com.zjx.springboard.touchindicator: %@", message);
         appendTouchIndicatorDebugLog(message);
         logNextIndicatorOrientation = NO;
@@ -230,13 +282,20 @@ static void refreshCachedIndicatorOrientation(void)
 {
     UIInterfaceOrientation previousOrientation = cachedOrientation;
     BOOL previousPortraitLock = indicatorLocksToPortrait;
+    UIInterfaceOrientationMask previousMask = indicatorOrientationMask;
     UIInterfaceOrientation selectedOrientation = currentIndicatorOrientation();
 
     cachedOrientation = selectedOrientation;
-    if (previousPortraitLock != indicatorLocksToPortrait) {
+    if (previousMask != indicatorOrientationMask) {
         indicatorWindowNeedsRebuild = YES;
+        appendTouchIndicatorDebugLog([NSString stringWithFormat:@"rotationPolicy mask=%lu portraitLock=%d bundle=%@\n",
+                                      (unsigned long)indicatorOrientationMask,
+                                      indicatorLocksToPortrait,
+                                      cachedPolicyBundleIdentifier ?: @"springboard"]);
     }
-    if (previousOrientation != selectedOrientation || previousPortraitLock != indicatorLocksToPortrait) {
+    if (previousOrientation != selectedOrientation ||
+        previousPortraitLock != indicatorLocksToPortrait ||
+        previousMask != indicatorOrientationMask) {
         [touchIndicatorWindow refreshRotationPolicy];
     }
 }
@@ -573,8 +632,10 @@ static void IOHIDEventCallbackForTouchIndicator(void* target, void* refcon, IOHI
         if (indicatorWindowNeedsRebuild && _window) {
             indicatorWindowNeedsRebuild = NO;
             [self rebuildOverlayWindow];
-            appendTouchIndicatorDebugLog([NSString stringWithFormat:@"recreatedOverlay portraitLock=%d orientation=%ld\n",
-                                          indicatorLocksToPortrait, (long)cachedOrientation]);
+            appendTouchIndicatorDebugLog([NSString stringWithFormat:@"recreatedOverlay mask=%lu portraitLock=%d orientation=%ld\n",
+                                          (unsigned long)indicatorOrientationMask,
+                                          indicatorLocksToPortrait,
+                                          (long)cachedOrientation]);
         }
         _window.autoresizingMask = indicatorLocksToPortrait ? UIViewAutoresizingNone :
             (UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin);

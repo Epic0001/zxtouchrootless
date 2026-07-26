@@ -134,10 +134,17 @@ void swapCGFloat(CGFloat *a, CGFloat *b)
 // sandbox in a SpringBoard-injected tweak on some jailbreaks (palera1n-rootless,
 // certain roothide setups), which surfaces to users as "Python script exited
 // with code -1" with an empty log. posix_spawn is the supported path.
-pid_t system2(const char * command, int * infp, int * outfp)
+pid_t system2(const char *command, int *infp, int *outfp)
+{
+    return system2Cancelable(command, infp, outfp, NULL, NULL);
+}
+
+pid_t system2Cancelable(const char *command, int *infp, int *outfp,
+                        pid_t *processGroup, volatile sig_atomic_t *cancelRequested)
 {
     int p_stdin[2] = {-1, -1};
     int p_stdout[2] = {-1, -1};
+    if (processGroup) *processGroup = 0;
 
     if (pipe(p_stdin) == -1) {
         NSLog(@"com.zjx.springboard: system2 pipe(stdin) failed: %s", strerror(errno));
@@ -200,7 +207,14 @@ pid_t system2(const char * command, int * infp, int * outfp)
     sigset_t emptyset;
     sigemptyset(&emptyset);
     posix_spawnattr_setsigmask(&attrs, &emptyset);
-    posix_spawnattr_setflags(&attrs, POSIX_SPAWN_SETSIGMASK);
+    short spawnFlags = POSIX_SPAWN_SETSIGMASK;
+    if (processGroup) {
+        // A dedicated process group lets ScriptPlayer stop the shell, Python,
+        // and the log pipeline together without killing unrelated Python jobs.
+        posix_spawnattr_setpgroup(&attrs, 0);
+        spawnFlags |= POSIX_SPAWN_SETPGROUP;
+    }
+    posix_spawnattr_setflags(&attrs, spawnFlags);
 
     char * const argv[] = {
         (char *)"sh",
@@ -222,6 +236,10 @@ pid_t system2(const char * command, int * infp, int * outfp)
         close(p_stdout[0]); close(p_stdout[1]);
         return -1;
     }
+    if (processGroup) *processGroup = pid;
+    if (cancelRequested && *cancelRequested) {
+        kill(-pid, SIGKILL);
+    }
 
     close(p_stdin[0]);
     close(p_stdout[1]);
@@ -241,8 +259,10 @@ pid_t system2(const char * command, int * infp, int * outfp)
     int status = 0;
     if (waitpid(pid, &status, 0) == -1) {
         NSLog(@"com.zjx.springboard: system2 waitpid failed: %s", strerror(errno));
+        if (processGroup) *processGroup = 0;
         return -1;
     }
+    if (processGroup) *processGroup = 0;
     if (WIFEXITED(status)) return WEXITSTATUS(status);
     if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
     return -1;

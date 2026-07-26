@@ -2,6 +2,7 @@
 #define COMMON_H
 
 #import <UIKit/UIKit.h>
+#include <signal.h>
 
 #define SYSTEM_VERSION_EQUAL_TO(v)                  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedSame)
 #define SYSTEM_VERSION_GREATER_THAN(v)              ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedDescending)
@@ -31,7 +32,9 @@ NSString* getScriptsFolder();
 void swapCGFloat(CGFloat *a, CGFloat *b);
 NSString *getConfigFilePath();
 NSString *getCommonConfigFilePath();
-pid_t system2(const char * command, int * infp, int * outfp);
+pid_t system2(const char *command, int *infp, int *outfp);
+pid_t system2Cancelable(const char *command, int *infp, int *outfp,
+                        pid_t *processGroup, volatile sig_atomic_t *cancelRequested);
 int call_system(const char *cmd);
 int roundUp(int numToRound, int multiple);
 Boolean isIpad();

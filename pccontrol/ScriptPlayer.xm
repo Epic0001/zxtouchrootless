@@ -8,6 +8,7 @@
 #include "Config.h"
 #include "Common.h"
 #import <sys/stat.h>
+#include <errno.h>
 
 static BOOL isPlaying = false;
 
@@ -104,6 +105,8 @@ static NSString *ZXPythonModulePath(void)
     NSTimer *replayTimer;
     UIView *circleView;
     Boolean scriptPlayForceStop;
+    volatile sig_atomic_t scriptStopRequested;
+    pid_t pythonProcessGroup;
     Boolean switchAppBeforePlaying;
     int _completedRuns;
 }
@@ -175,6 +178,8 @@ static NSString *ZXPythonModulePath(void)
     if (self)
     {
         [self clear];
+        scriptStopRequested = 0;
+        pythonProcessGroup = 0;
     }
     return self;
 }
@@ -185,11 +190,16 @@ static NSString *ZXPythonModulePath(void)
     {
         scriptBundlePath = path;
         currentScriptType = -1;
+        scriptStopRequested = 0;
+        pythonProcessGroup = 0;
     }
     return self;
 }
 
 -(int)runScript:(NSError**)error {
+    scriptStopRequested = 0;
+    pythonProcessGroup = 0;
+
     if (!scriptBundlePath)
     {
         NSLog(@"com.zjx.springboard: Unable to run the script. ScriptBundlePath not set.");
@@ -326,6 +336,7 @@ static NSString *ZXPythonModulePath(void)
         }
 
     }
+    fclose(file);
 
     if (!stoppedByUser) [self playHasStopped];
 }
@@ -385,10 +396,13 @@ static NSString *ZXPythonModulePath(void)
                               ZXShellQuote(statusFile)];
     NSLog(@"com.zjx.springboard: command to run for running py file %@", commandToRun);
 
-    int shellExitCode = system2([commandToRun UTF8String], NULL, NULL);
+    int shellExitCode = system2Cancelable([commandToRun UTF8String], NULL, NULL,
+                                          &pythonProcessGroup, &scriptStopRequested);
+    BOOL stoppedByUser = scriptStopRequested != 0;
+    scriptStopRequested = 0;
     NSString *statusText = [NSString stringWithContentsOfFile:statusFile encoding:NSUTF8StringEncoding error:nil];
     int pythonExitCode = statusText ? [statusText intValue] : shellExitCode;
-    if (pythonExitCode != 0) {
+    if (!stoppedByUser && pythonExitCode != 0) {
         NSString *title = @"Script Error";
         NSString *message;
         NSString *logTail = [NSString stringWithContentsOfFile:outputLog encoding:NSUTF8StringEncoding error:nil] ?: @"";
@@ -412,8 +426,7 @@ static NSString *ZXPythonModulePath(void)
         NSLog(@"com.zjx.springboard: %@ — %@", title, message);
         showAlertBox(title, message, 999);
     }
-    // add force stop
-    [self playHasStopped];
+    if (!stoppedByUser) [self playHasStopped];
 }
 
 - (void)replay:(NSTimer*)nstimer {
@@ -502,9 +515,12 @@ static NSString *ZXPythonModulePath(void)
     }
     else if (currentScriptType == 2)
     {
-        // Kill all python3 processes; SpringBoard runs as root so no sudo needed.
-        // system2 blocks but killall returns quickly, so this is fine.
-        system2([jbroot(@"/usr/bin/killall") stringByAppendingString:@" -9 python3"].UTF8String, NULL, NULL);
+        scriptStopRequested = 1;
+        pid_t processGroup = pythonProcessGroup;
+        if (processGroup > 0 && kill(-processGroup, SIGKILL) != 0 && errno != ESRCH) {
+            NSLog(@"com.zjx.springboard: failed to stop Python process group %d: errno %d",
+                  processGroup, errno);
+        }
         [self clear];
     }
     else

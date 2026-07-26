@@ -154,4 +154,4 @@ jobs:
             1. Download the `.deb` for your jailbreak
             2. Install via Filza or SSH: `dpkg -i <file>.deb && killall -9 SpringBoard`
 
-            > Python 3 from Procursus is recommended for `.py` scripts. ZXTouch also falls back to the bundled runtime when available.
+            > Python 3 from Procursus is required for `.py` scripts.

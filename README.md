@@ -28,6 +28,8 @@ This fork has been actively revived for modern rootless jailbreaks. Recent relea
 - Token-protected remote dashboard for scripts, recording, logs, assets, and live device status
 - Persistent dashboard hosting through SpringBoard, so closing the ZXTouch app does not stop the server
 - Package installs now finish before respringing, preventing interrupted dpkg transactions in Sileo
+- Touch Indicator now follows each app's exact supported orientation mask, including landscape-only apps
+- Stopping a Python script now terminates its complete process group without leaving a runaway shell or logger
 
 The built-in automation system currently supports assigning actions to Volume Up, Volume Down, and Home button click patterns. Each trigger can use 1-5 clicks and can run one of these actions:
 
@@ -70,6 +72,8 @@ The built-in automation system currently supports assigning actions to Volume Up
 - **Recording editor** - tap a raw recording bundle to edit, reorder, duplicate, delete, save, and test its actions
 - **Persistent remote dashboard** - control ZXTouch from another device on the same Wi-Fi, even while the app is closed
 - **Modern dashboard workspaces** - focused Scripts, Assets, Logs, and Device views with responsive phone and desktop layouts
+- **Orientation-aware Touch Indicator** - stays within the foreground app's supported portrait or landscape orientations and maps both landscape directions correctly
+- **Reliable script stopping** - tracks each Python run as a process group and stops its interpreter, shell, logger, and child processes together
 
 ---
 
